@@ -49,7 +49,7 @@ squelette) : `async def send(to, subject, body, is_html) -> bool` /
 
 ## Pourquoi un layout séparé de `xweb.shell_head`
 
-Même raison que [`xweb.pdf_document`](pdf.md#pourquoi-un-layout-séparé-de-xwebshell_head) :
+Même raison que [`xweb.pdf_document`](pdf.md#pourquoi-un-layout-separe-de-xwebshell_head) :
 `xweb.email_layout` ([`xweb/components/email.xml`](../xweb/components/email.xml))
 n'utilise ni `app.css` ni la moindre classe DaisyUI. De nombreux clients
 mail (Outlook en tête) suppriment les balises `<style>` et n'implémentent

@@ -143,6 +143,9 @@
         </div>
     </section>
 
+    <!-- ── catalogue de composants ───────────────────────────────────── -->
+    <t t-call="site.components_catalogue" t-att-showcase="showcase" t-att-csrf_token="csrf_token"/>
+
     <!-- ── CTA final ─────────────────────────────────────────────────── -->
     <section class="px-4 sm:px-6 lg:px-8 pb-20">
         <div class="max-w-3xl mx-auto">

@@ -1,0 +1,305 @@
+<!--
+    Catalogue de composants — appelé depuis site.landing (templates/landing.xml).
+    Fichier séparé pour ne pas noyer le reste de la landing dans ~40
+    exemples, mais rendu SUR la même page (t-call, pas une route à part) —
+    voir CLAUDE.md#url-prefix pour pourquoi rien ici n'est monté comme un
+    plugin séparé.
+
+    Contexte isolé par t-call (docs/language.md#t-call) : un seul prop,
+    `showcase` (dict), porte toutes les données pré-calculées côté vue
+    (plugins/demo/templates/components.xml jouait ce rôle avant sa
+    suppression avec plugins/ — ce fichier reprend le même esprit de
+    "catalogue vivant", recâblé sur la landing page faute de plugin
+    aujourd'hui). Rien ici n'est un exemple figé en dur dans le XML quand
+    la donnée doit être calculée côté Python (calendrier — xweb/calendar.py,
+    aucun builtin date dans une expression QWeb, CLAUDE.md).
+
+    Chaque composant est montré une fois, avec des props représentatives —
+    pas toutes les combinaisons possibles (voir chaque fichier sous
+    xweb/components/ pour la liste complète des props).
+-->
+<template t-name="site.components_catalogue">
+<!-- t-value="showcase or {}", PAS t-default="{}" : landing.xml passe
+     toujours la prop t-att-showcase="showcase" (jamais absente d'ici), mais
+     sa VALEUR peut être None si l'appelant (site.landing) ne l'a lui-même
+     jamais reçue — un t-call transmet explicitement None dans ce cas, ce
+     que t-default n'intercepte pas (il ne joue que si la clé est absente
+     du contexte, pas si elle vaut None, voir docs/language.md, section
+     t-set/t-value). Trouvé en cassant tests/test_landing.py (rendu de
+     site.landing sans contexte showcase). -->
+<t t-set="showcase" t-value="showcase or {}"/>
+<t t-set="csrf_token" t-value="csrf_token or ''"/>
+<section class="px-4 sm:px-6 lg:px-8 pb-20" id="composants">
+    <div class="max-w-6xl mx-auto">
+        <div class="text-center mb-10">
+            <h2 class="text-2xl sm:text-3xl font-bold" t-tr="1">Catalogue de composants</h2>
+            <p class="opacity-70 mt-2" t-tr="1">Tout ce que xweb.* fournit, rendu ici même — pas des captures d'écran.</p>
+        </div>
+
+        <!-- ── Conteneurs & structure ───────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Conteneurs &amp; structure</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.field</p>
+                <t t-call="xweb.field" label="Nom de l'organisation" help="Visible par tous les membres.">
+                    <t t-call="xweb.input" name="org_name" placeholder="Acme SAS"/>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.field (erreur)</p>
+                <t t-call="xweb.field" label="Email" error="Adresse invalide." required="1">
+                    <t t-call="xweb.input" name="email" value="pas-un-email" invalid="1"/>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.description</p>
+                <t t-call="xweb.description">
+                    <dt class="font-medium opacity-70">Créé le</dt><dd>3 septembre 2026</dd>
+                    <dt class="font-medium opacity-70">Statut</dt><dd>Actif</dd>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.error</p>
+                <t t-call="xweb.error">Ce champ est obligatoire.</t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.label</p>
+                <t t-call="xweb.label" badge="Bêta">Nouvelle fonctionnalité</t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.divider</p>
+                <p class="text-sm opacity-70">Avant</p>
+                <t t-call="xweb.divider"/>
+                <p class="text-sm opacity-70">Après</p>
+            </div>
+        </div>
+
+        <!-- ── Boutons & actions ─────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Boutons &amp; actions</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.button</p>
+                <div class="flex flex-wrap gap-2">
+                    <t t-call="xweb.button" variant="primary" size="sm">Primaire</t>
+                    <t t-call="xweb.button" variant="outline" size="sm">Contour</t>
+                    <t t-call="xweb.button" variant="ghost" size="sm">Fantôme</t>
+                </div>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.spinner</p>
+                <t t-call="xweb.spinner" size="md" color="primary"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.progress</p>
+                <t t-call="xweb.progress" value="65" color="accent"/>
+            </div>
+        </div>
+
+        <!-- ── Formulaire ────────────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Formulaire</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.input</p>
+                <t t-call="xweb.input" name="demo_input" placeholder="Tapez ici…"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.password</p>
+                <t t-call="xweb.password" name="demo_password"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.textarea</p>
+                <t t-call="xweb.textarea" name="demo_textarea" placeholder="Un commentaire…" rows="3"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.checkbox</p>
+                <t t-call="xweb.checkbox" name="demo_checkbox" label="J'accepte les conditions" checked="1"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.radio</p>
+                <div class="flex flex-col gap-1">
+                    <t t-call="xweb.radio" name="demo_radio" value="a" label="Option A" checked="1"/>
+                    <t t-call="xweb.radio" name="demo_radio" value="b" label="Option B"/>
+                </div>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.toggle</p>
+                <t t-call="xweb.toggle" name="demo_toggle" label="Notifications" checked="1"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.range</p>
+                <t t-call="xweb.range" name="demo_range" value="40"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.select</p>
+                <t t-call="xweb.select" name="demo_select" placeholder="Choisir…" t-att-options="showcase.get('select_options')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.combobox</p>
+                <t t-call="xweb.combobox" id="demo-combobox" name="demo_combobox" t-att-options="showcase.get('combobox_options')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.calendar</p>
+                <t t-call="xweb.calendar" id="demo-calendar" t-att-month_label="showcase.get('calendar', {}).get('month_label')" t-att-weeks="showcase.get('calendar', {}).get('weeks')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.datepicker</p>
+                <t t-call="xweb.datepicker" id="demo-datepicker" name="demo_date" t-att-month_label="showcase.get('calendar', {}).get('month_label')" t-att-weeks="showcase.get('calendar', {}).get('weeks')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 sm:col-span-2 lg:col-span-3">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.form (CSRF posé automatiquement)</p>
+                <t t-call="xweb.form" action="#" t-att-token="csrf_token">
+                    <t t-call="xweb.field" label="Message">
+                        <t t-call="xweb.textarea" name="msg" rows="2"/>
+                    </t>
+                    <t t-call="xweb.button" variant="primary" type="submit">Envoyer</t>
+                </t>
+            </div>
+        </div>
+
+        <!-- ── Avatar & identité ─────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Avatar &amp; identité</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.avatar</p>
+                <t t-call="xweb.avatar" initial="A" size="md" status="online"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.avatar_group</p>
+                <t t-call="xweb.avatar_group" t-att-items="showcase.get('avatar_group_items')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.breadcrumbs</p>
+                <t t-call="xweb.breadcrumbs" t-att-items="showcase.get('breadcrumb_items')"/>
+            </div>
+        </div>
+
+        <!-- ── Disclosure — accordéon, tabs, table ─────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Accordéon, onglets, tableau</h3>
+        <div class="grid gap-4 lg:grid-cols-2 mb-10">
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.accordion</p>
+                <t t-call="xweb.accordion" t-att-items="showcase.get('accordion_items')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.collapse</p>
+                <t t-call="xweb.collapse" title="Voir le détail">
+                    <p class="text-sm">Contenu replié par défaut, natif (&lt;details&gt;), zéro JS.</p>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.tabs</p>
+                <t t-call="xweb.tabs" t-att-items="showcase.get('tabs_items')"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.table</p>
+                <t t-call="xweb.table" t-att-columns="showcase.get('table_columns')" t-att-rows="showcase.get('table_rows')" zebra="1"/>
+            </div>
+        </div>
+
+        <!-- ── Overlays ─────────────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Menus déroulants, boîtes de dialogue, popover</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.dropdown</p>
+                <t t-call="xweb.dropdown" label="Actions">
+                    <li><a>Modifier</a></li>
+                    <li><a>Dupliquer</a></li>
+                    <li><a class="text-error">Supprimer</a></li>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.menu</p>
+                <t t-call="xweb.menu" title="Navigation" t-att-items="showcase.get('menu_items')" extra_class="bg-base-100 rounded-box w-full"/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.modal</p>
+                <t t-call="xweb.modal_trigger" target="demo-modal">Ouvrir la boîte de dialogue</t>
+                <t t-call="xweb.modal" id="demo-modal" title="Confirmer">
+                    <p class="text-sm">Cette action est irréversible.</p>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.drawer</p>
+                <t t-call="xweb.drawer_toggle" target="demo-drawer">Ouvrir le panneau</t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.popover</p>
+                <t t-call="xweb.popover" id="demo-popover" trigger_label="Options">
+                    <p class="text-sm p-2">Contenu riche, ferme au clic extérieur/Échap.</p>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2 items-start">
+                <p class="text-xs font-mono opacity-50">xweb.tooltip</p>
+                <t t-call="xweb.tooltip" text="Info-bulle au survol">
+                    <t t-call="xweb.button" variant="ghost" size="sm">Survolez-moi</t>
+                </t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.toast</p>
+                <t t-call="xweb.toast" variant="success">Enregistré avec succès.</t>
+            </div>
+        </div>
+
+        <!-- ── Système ───────────────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Système</h3>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.alert</p>
+                <t t-call="xweb.alert" variant="warning" title="Attention" dismissible="1">Quota bientôt atteint.</t>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.kbd</p>
+                <p class="text-sm flex items-center gap-1">
+                    <t t-call="xweb.kbd">Ctrl</t>+<t t-call="xweb.kbd">K</t>
+                </p>
+            </div>
+            <div class="border border-base-300 rounded-box p-4">
+                <p class="text-xs font-mono opacity-50 mb-2">xweb.empty</p>
+                <t t-call="xweb.empty" icon="inbox" title="Aucune notification" message="Tout est à jour."/>
+            </div>
+            <div class="border border-base-300 rounded-box p-4 flex flex-col gap-2">
+                <p class="text-xs font-mono opacity-50">xweb.icon</p>
+                <div class="flex flex-wrap gap-3">
+                    <t t-call="xweb.icon" name="sparkles"/>
+                    <t t-call="xweb.icon" name="shield"/>
+                    <t t-call="xweb.icon" name="bolt"/>
+                    <t t-call="xweb.icon" name="grid"/>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Kanban ────────────────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Kanban — glisser-déposer natif</h3>
+        <div class="border border-base-300 rounded-box p-4 mb-10">
+            <t t-call="xweb.kanban" t-att-columns="showcase.get('kanban_columns')"/>
+        </div>
+
+        <!-- ── Tableau éditable façon Notion ────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Tableau éditable — colonnes typées, glisser-déposer</h3>
+        <p class="text-sm opacity-70 mb-3" t-tr="1">
+            Persisté pour de vrai (état de module, pas un mock) — cliquez une tâche ou un en-tête, changez le statut, glissez une ligne, ajoutez une colonne.
+        </p>
+        <div class="mb-10">
+            <t t-call="xweb.editable_table"
+               t-att-columns="showcase.get('editable_table_columns')" t-att-rows="showcase.get('editable_table_rows')"
+               save_url="/demo/table/cell" add_row_url="/demo/table/row" delete_row_url="/demo/table/row" reorder_url="/demo/table/reorder"
+               add_column_url="/demo/table/column" rename_column_url="/demo/table/column"/>
+        </div>
+
+        <!-- ── Export PDF ────────────────────────────────────────────────── -->
+        <h3 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Export PDF — même moteur QWeb</h3>
+        <t t-call="xweb.card" extra_class="mb-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-sm opacity-80" t-tr="1">
+                    xweb.pdf_document rend ce même catalogue en PDF via WeasyPrint — aucun second moteur de template.
+                </p>
+                <t t-call="xweb.button" variant="primary" size="sm" href="/components.pdf" extra_class="shrink-0">
+                    <t t-call="xweb.icon" name="download" extra_class="size-4"/>Télécharger le PDF
+                </t>
+            </div>
+        </t>
+
+        <t t-call="xweb.drawer" id="demo-drawer" t-att-side_items="showcase.get('menu_items')"><span/></t>
+    </div>
+</section>
+</template>

@@ -58,30 +58,3 @@ services:
         # catalogue retombe simplement sur le texte source, jamais une erreur.
         locales_dir: "locales"
         locales: ["en"]
-    google:
-      module: extensions.googleService.service:GoogleServiceClient
-      config:
-        timeout: 10
-    # plugins/auth appelle self.get_service("ext.email") SANS filet (contrairement
-    # à ext.google, protégé par un try/except) — contrat lu dans
-    # plugins/auth/src/services/email/base.py : .send(to,subject,body,is_html)
-    # async + .queue(...) sync. xcore ne fournit aucune extension email
-    # intégrée (vérifié). extensions/email.py logue au lieu d'envoyer — pas
-    # de credentials SMTP réels dans plugins/auth/.env pour l'instant.
-
-    email:
-      module: extensions.email:ConsoleEmailExtension
-      config: {}
-    pubsub:
-      module: extensions.pubsub.service:PubSubClient
-      config:
-        provider: redis
-        redis:
-          url: redis://localhost:6379/1
-
-    web_socket:
-      module: extensions.xwebsocket.main:WsManager
-      config:
-        channel:
-        - hello
-        - xcompany

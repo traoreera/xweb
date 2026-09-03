@@ -2,8 +2,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from xcore import Xcore
-
+from xweb.urls import mount_xweb_pages, PageRoute, PageView
 from xweb.paths import plugin_prefix
+
+
+
+page = PageRoute(path="/", view=lambda ctx, req: {}, template="site.landing", name="landing") # type: ignore
+
 
 # plugins/auth (docs/auth.md) est un vrai plugin trusted qui s'enregistre
 # lui-même : `register_auth_backend(XAuthBackend(...))` dans son on_load()
@@ -46,15 +51,29 @@ async def lifespan(app: FastAPI):
     # (integration.yaml, namespaces.site), pas dans xweb/components/ (réservé
     # aux composants xweb.* partagés) ni un plugins/*/templates/ (ce n'est
     # la page d'aucun plugin en particulier).
-    from fastapi import APIRouter
+    #
+    # render_xweb_template() directement, PAS mount_xweb_page() : ce dernier
+    # résout toujours l'utilisateur courant avant d'appeler la vue
+    # (xweb/mount.py::mount_xweb_page — resolve_user_or_anonymous, même si
+    # `view` ne lit jamais ctx.user), donc exige un AuthBackend enregistré,
+    # même pour une page qui n'en a structurellement pas besoin. Sans aucun
+    # plugin d'auth chargé (projet vide, "pour l'instant"), ça 503 sur
+    # "Auth backend non disponible" avant même d'atteindre la vue — vérifié
+    # en conditions réelles. La landing ne lit jamais ctx.user (view=() => {})
+    # donc `user=None` explicite ici est correct, pas un contournement de
+    # sécurité : rien sur cette page ne dépend d'être connecté ou non.
+    from fastapi import APIRouter, Request, Response
 
-    from xweb.mount import mount_xweb_page
+    import landing_data
+    from landing_data import showcase_context
+    from xweb.mount import render_xweb_template
+    from xweb.pdf import PdfUnavailable, render_pdf
 
     class _SiteContext:
         """plugin_ctx minimal pour une page qui n'appartient à aucun plugin
         — même contrat que le vrai PluginContext (name, get_service), pour
-        que XwebContext se comporte normalement si la landing page a un
-        jour besoin d'un service (docs/plugins.md)."""
+        que le contexte de rendu se comporte normalement si la landing page
+        a un jour besoin d'un service (docs/plugins.md)."""
 
         name = "site"
         tenant_id = None
@@ -64,12 +83,138 @@ async def lifespan(app: FastAPI):
             return xcore.services.get(service_name)
 
     site_router = APIRouter()
-    mount_xweb_page(
-        site_router, _SiteContext(), xcore.services.get("ext.xweb").engine,
-        path="/", template="site.landing", view=lambda ctx: {},
-        app_name=APP_NAME, page_title=APP_NAME,
-        layout="xweb.marketing_layout", use_shell=False,
-    )
+
+    @site_router.api_route("/", methods=["GET", "HEAD"])
+    async def landing(request: Request):
+        return render_xweb_template(
+            xcore.services.get("ext.xweb").engine, "site.landing", _SiteContext(), request, user=None,
+            extra={"showcase": showcase_context()},
+            app_name=APP_NAME, page_title=APP_NAME,
+            layout="xweb.marketing_layout", use_shell=True,
+        )
+
+    # Export PDF du catalogue de composants (bouton "Télécharger le PDF" de
+    # site.components_catalogue) — même engine.render() que la page HTML,
+    # jamais un second moteur de template (xweb/pdf.py::render_pdf(),
+    # docs/pdf.md). PdfUnavailable (weasyprint absent) dégrade en 503
+    # explicite plutôt que de faire planter la route — même philosophie que
+    # le reste de xweb (jamais une exception non gérée qui casse une page
+    # par ailleurs fonctionnelle).
+    @site_router.get("/components.pdf")
+    async def components_pdf():
+        from datetime import date
+
+        engine = xcore.services.get("ext.xweb").engine
+        try:
+            pdf_bytes = render_pdf(
+                engine, "site.components_pdf",
+                {
+                    "showcase": showcase_context(),
+                    "page_title": "Catalogue de composants",
+                    "app_name": APP_NAME,
+                    "generated_at": date.today().isoformat(),
+                },
+            )
+        except PdfUnavailable as exc:
+            return Response(content=str(exc), status_code=503, media_type="text/plain")
+        return Response(
+            content=pdf_bytes, media_type="application/pdf",
+            headers={"Content-Disposition": 'attachment; filename="composants-xweb.pdf"'},
+        )
+
+    # Démo persistée de xweb.editable_table (templates/components_showcase.xml)
+    # — même schéma que xweb.kanban dans l'ancien plugins/demo : un état de
+    # module réel (landing_data.py), pas un mock. Chaque route rend le
+    # fragment attendu par le hx-target/hx-swap posé côté composant (le <td>
+    # édité pour une cellule, le <tr> entier pour un ajout, rien pour une
+    # suppression/un réordonnancement — voir xweb/components/editable_table.xml).
+    _EDITABLE_CELL_TEMPLATE = {
+        "text": "xweb.editable_table_cell_text",
+        "select": "xweb.editable_table_cell_select",
+        "checkbox": "xweb.editable_table_cell_checkbox",
+    }
+
+    def _editable_column(key: str) -> dict | None:
+        return next((c for c in landing_data.EDITABLE_TABLE_COLUMNS if c["key"] == key), None)
+
+    @site_router.patch("/demo/table/cell/{row_id}")
+    async def editable_table_save_cell(row_id: str, request: Request):
+        form = await request.form()
+        column = str(form.get("column", ""))
+        col = _editable_column(column)
+        engine = xcore.services.get("ext.xweb").engine
+        if col is None:
+            return Response(status_code=204)
+        if col["type"] == "checkbox":
+            # hx-vals="js:{..., value: event.target.checked}" -> un booléen
+            # JS sérialisé en form-urlencoded devient la chaîne "true"/"false".
+            value: object = str(form.get("value", "")).lower() == "true"
+        else:
+            value = str(form.get("value", ""))
+        row = landing_data.editable_table_set_cell(row_id, column, value)
+        if row is None:
+            return Response(status_code=204)
+        html = engine.render(_EDITABLE_CELL_TEMPLATE[col["type"]], {
+            "row": row, "col": col, "save_url": "/demo/table/cell",
+        })
+        return Response(content=html, media_type="text/html")
+
+    @site_router.post("/demo/table/row")
+    async def editable_table_add_row():
+        engine = xcore.services.get("ext.xweb").engine
+        row = landing_data.editable_table_add_row()
+        html = engine.render("xweb.editable_table_row", {
+            "row": row, "columns": landing_data.EDITABLE_TABLE_COLUMNS,
+            "save_url": "/demo/table/cell", "delete_row_url": "/demo/table/row",
+            "reorder_url": "/demo/table/reorder",
+        })
+        return Response(content=html, media_type="text/html")
+
+    @site_router.delete("/demo/table/row/{row_id}")
+    async def editable_table_delete_row(row_id: str):
+        landing_data.editable_table_delete_row(row_id)
+        return Response(status_code=200)
+
+    @site_router.post("/demo/table/reorder")
+    async def editable_table_reorder(request: Request):
+        import json as _json
+
+        form = await request.form()
+        try:
+            order = _json.loads(str(form.get("order", "[]")))
+        except ValueError:
+            order = []
+        if isinstance(order, list):
+            landing_data.editable_table_reorder([str(i) for i in order])
+        return Response(status_code=204)
+
+    @site_router.post("/demo/table/column")
+    async def editable_table_add_column():
+        # Ajouter une colonne change l'en-tête ET chaque ligne -> toute la
+        # grille se ré-affiche (xweb.editable_table entier), jamais un seul
+        # <td>/<tr> comme les autres routes ci-dessus — voir la docstring
+        # de add_column_url dans xweb/components/editable_table.xml.
+        landing_data.editable_table_add_column()
+        engine = xcore.services.get("ext.xweb").engine
+        html = engine.render("xweb.editable_table", {
+            "columns": landing_data.editable_table_columns(), "rows": landing_data.editable_table_rows(),
+            "save_url": "/demo/table/cell", "add_row_url": "/demo/table/row",
+            "delete_row_url": "/demo/table/row", "reorder_url": "/demo/table/reorder",
+            "add_column_url": "/demo/table/column", "rename_column_url": "/demo/table/column",
+        })
+        return Response(content=html, media_type="text/html")
+
+    @site_router.patch("/demo/table/column/{key}")
+    async def editable_table_rename_column(key: str, request: Request):
+        form = await request.form()
+        label = str(form.get("label", "")).strip() or "Nouvelle colonne"
+        col = landing_data.editable_table_rename_column(key, label)
+        if col is None:
+            return Response(status_code=204)
+        engine = xcore.services.get("ext.xweb").engine
+        html = engine.render("xweb.editable_table_header_cell", {"col": col, "rename_column_url": "/demo/table/column"})
+        return Response(content=html, media_type="text/html")
+
     app.include_router(site_router)
 
     yield

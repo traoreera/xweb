@@ -25,6 +25,8 @@ Branchement conditionnel sur un nœud — le nœud entier disparaît si la condi
 </t>
 ```
 
+**Piège réel avec un nom absent du contexte, pas juste falsy** (trouvé en écrivant `docs/guide/first-page.md`) : `_eval` (`engine/compiler.py`) attrape `NameError` sur toute l'expression et retombe sur `None` — jamais sur une négation booléenne de "absent = faux". Donc `t-if="entries"` sur un `entries` absent du contexte se comporte comme attendu (ne s'affiche pas), mais `t-if="not entries"` sur ce même nom absent **ne s'affiche pas non plus** — `not entries` vaut `None`, pas `True`, parce que l'échec sur le nom `entries` invalide l'expression entière avant que `not` s'applique. Ça ne se voit qu'à l'usage : le même test avec `entries` réellement présent dans le contexte mais valant `[]` fonctionne, lui, normalement (`not []` vaut bien `True`, aucun nom indéfini). Un `t-call` (isole son contexte, voir plus bas) qui oublie de repasser une prop attendue par la cible tombe régulièrement dans ce cas précis.
+
 ## `t-foreach` + `t-as`
 
 Répète le nœud porteur une fois par élément de l'itérable. `t-as` nomme la variable de boucle ; `<var>_index`, `<var>_size`, `<var>_first`, `<var>_last` sont disponibles automatiquement (convention QWeb standard).

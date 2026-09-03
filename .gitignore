@@ -13,3 +13,7 @@ __pycache__/
 .templates/
 AGENTS.md
 CLAUDE.md
+*.db
+site/
+dist/
+.verify-editable-table.html

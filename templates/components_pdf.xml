@@ -1,0 +1,42 @@
+<!--
+    site.components_pdf — contenu du PDF exporté depuis le catalogue de
+    composants (templates/components_showcase.xml, bouton "Télécharger le
+    PDF"). Enveloppé par xweb.pdf_document (xweb/components/pdf.xml) via
+    xweb/pdf.py::render_pdf() — même moteur QWeb que la page HTML, jamais
+    un second système de template pour ce document (docs/pdf.md).
+
+    Volontairement PAS un rendu de xweb.table/xweb.kanban/etc. tels quels :
+    ces composants portent des classes DaisyUI (app.css), que WeasyPrint ne
+    supporte pas (oklch()/@layer — voir la docstring de xweb/components/pdf.xml).
+    Un <table> HTML simple, avec les styles déjà posés par xweb.pdf_document,
+    reprend les mêmes données (showcase['table_rows']) sans dépendre d'app.css.
+-->
+<template t-name="site.components_pdf">
+<t t-set="showcase" t-default="{}"/>
+<p style="margin: 0 0 12px; color: #6b7280;">
+    Export généré depuis le même moteur QWeb que la page HTML — <t t-esc="showcase.get('component_count', 0)"/> composants xweb.* catalogués.
+</p>
+<table>
+    <thead>
+        <tr>
+            <t t-foreach="showcase.get('table_columns', [])" t-as="col">
+                <th><t t-esc="col['label']"/></th>
+            </t>
+        </tr>
+    </thead>
+    <tbody>
+        <t t-if="showcase.get('table_rows')">
+            <t t-foreach="showcase.get('table_rows', [])" t-as="row">
+                <tr>
+                    <t t-foreach="showcase.get('table_columns', [])" t-as="col">
+                        <td><t t-esc="row.get(col['key'], '')"/></td>
+                    </t>
+                </tr>
+            </t>
+        </t>
+        <t t-else="1">
+            <tr><td colspan="99" class="pdf-empty">Aucune ligne.</td></tr>
+        </t>
+    </tbody>
+</table>
+</template>

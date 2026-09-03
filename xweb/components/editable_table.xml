@@ -1,0 +1,311 @@
+<!--
+    xweb.editable_table — grille éditable en ligne façon Notion : cellules
+    texte éditables au clic, cellules "select" en étiquette colorée avec
+    menu, cases à cocher sauvegardées immédiatement, ajout/suppression de
+    ligne, réordonnancement par glisser-déposer natif HTML5. Même famille
+    que xweb.kanban (aucune librairie externe — CLAUDE.md, "aucun bundle JS"),
+    zéro état côté client : chaque mutation part en htmx vers une route que
+    l'APPELANT fournit (comme move_url sur xweb.kanban) — ce composant ne
+    connaît rien de la persistance réelle.
+
+    Props :
+      id             : "xweb-editable-table" par défaut — DOIT être unique si
+                        plusieurs xweb.editable_table apparaissent sur la même
+                        page (même contrat que xweb.kanban/modal/drawer). Sert
+                        à scoper hx-target="#{{id}}-tbody" du bouton d'ajout de
+                        ligne — un bare "tbody" cible le premier <tbody> de
+                        toute la page, pas forcément le bon (bug réel trouvé
+                        en testant sur une page qui affiche aussi xweb.table).
+      columns        : [{key, label, type, options?}], type ∈ "text"/"select"/"checkbox".
+                        "select" exige options: [{value, label, color?}] (color = classe
+                        DaisyUI, ex. "success"/"warning" — voir _select_badge_class ci-dessous).
+      rows            : [{id, <col.key>: valeur, ...}, ...]. row['id'] DOIT être unique
+                        dans toute la page (posé comme id= DOM, comme card['id'] sur
+                        xweb.kanban — document.getElementById() s'en sert).
+      save_url        : hx-patch appelée à chaque édition de cellule, sur
+                        "{save_url}/{row_id}" avec {"column": <key>, "value": <valeur>}
+                        en payload. Réponse attendue : le <td> ré-affiché (hx-swap
+                        outerHTML) — c'est la vue serveur qui décide du format final
+                        affiché (ex. mise en forme d'un nombre), jamais le client.
+      add_row_url     : hx-post à "" (vide désactive le bouton, t-att-* n'émet pas
+                        d'attribut pour une valeur falsy, comme move_url sur xweb.kanban).
+                        Réponse attendue : un <tr> complet, ajouté en fin de tableau.
+      delete_row_url  : hx-delete sur "{delete_row_url}/{row_id}".
+      reorder_url     : hx-post à chaque dépôt après glisser-déposer, payload
+                        {"order": [id, id, ...]} (ordre complet, pas juste la ligne
+                        déplacée — plus simple à persister côté vue qu'un déplacement
+                        relatif). hx-swap="none" : le DOM est déjà dans le bon ordre
+                        au moment de l'appel (put ... before/after, comme xweb.kanban),
+                        rien à ré-afficher.
+      add_column_url  : hx-post à "" (vide désactive le bouton "+" d'en-tête, même
+                        convention que add_row_url). AUCUN payload — le serveur
+                        choisit le nom ("Nouvelle colonne") et le type (toujours
+                        "text" en v1 : un type "select" a besoin d'un éditeur
+                        d'options, hors scope ici, voir docs/components.md). Réponse
+                        attendue : xweb.editable_table ENTIER ré-affiché (une colonne
+                        en plus change l'en-tête ET chaque ligne, contrairement à
+                        add_row_url qui ne touche qu'un <tr>) — hx-target="closest
+                        .editable-table" hx-swap="outerHTML", d'où la classe
+                        "editable-table" posée sur le conteneur ci-dessous.
+      rename_column_url : hx-patch sur "{rename_column_url}/{column_key}" avec
+                        {"label": <valeur>} au clic-pour-éditer d'un en-tête (même
+                        mécanique que la cellule texte). '' désactive l'édition —
+                        les en-têtes restent du texte simple.
+      extra_class     : classes supplémentaires sur le conteneur.
+
+    Mécanique glisser-déposer : identique à xweb.kanban (put ... before/after
+    me, PAS move ... to — absent de _hyperscript.min.js vendorisé, testé et
+    confirmé planter le parseur, voir xweb/components/kanban.xml). La seule
+    différence : xweb.kanban dépose TOUJOURS en fin de colonne (put at end
+    of), une ligne de table se dépose avant OU après la ligne survolée selon
+    la position verticale du curseur (event.clientY vs le milieu de la ligne)
+    — cette partie est nouvelle, vérifiée en vrai dans
+    scripts/verify-editable-table.mjs (pas seulement verify-hyperscript.mjs).
+
+    Édition d'une cellule "select" : même idiome que xweb.combobox (menu
+    DaisyUI + _hyperscript, valeur lue depuis un attribut data- jamais
+    interpolée en dur — même risque d'injection déjà documenté dans la
+    docstring de combobox.xml, même parade ici).
+-->
+<templates>
+
+<template t-name="xweb.editable_table">
+    <t t-set="id" t-default="'xweb-editable-table'"/>
+    <t t-set="columns" t-default="[]"/>
+    <t t-set="rows" t-default="[]"/>
+    <t t-set="save_url" t-default="''"/>
+    <t t-set="add_row_url" t-default="''"/>
+    <t t-set="delete_row_url" t-default="''"/>
+    <t t-set="reorder_url" t-default="''"/>
+    <t t-set="add_column_url" t-default="''"/>
+    <t t-set="rename_column_url" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <!-- classe "editable-table" : cible fixe pour hx-target="closest
+         .editable-table" du bouton "+" de colonne ci-dessous — ajouter
+         une colonne change l'en-tête ET chaque ligne, donc toute la
+         grille se ré-affiche, jamais un seul <td>/<tr>. -->
+    <div t-attf-class="editable-table overflow-x-auto rounded-box border border-base-300 bg-base-100 {{extra_class}}">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th class="w-8"></th>
+                    <t t-foreach="columns" t-as="col">
+                        <t t-call="xweb.editable_table_header_cell" t-att-col="col" t-att-rename_column_url="rename_column_url"/>
+                    </t>
+                    <th class="w-8">
+                        <t t-if="add_column_url">
+                            <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Ajouter une colonne"
+                                    t-att-hx-post="add_column_url" hx-target="closest .editable-table" hx-swap="outerHTML">
+                                <t t-call="xweb.icon" name="plus" extra_class="size-3.5"/>
+                            </button>
+                        </t>
+                    </th>
+                </tr>
+            </thead>
+            <tbody t-attf-id="{{id}}-tbody">
+                <t t-foreach="rows" t-as="row">
+                    <t t-call="xweb.editable_table_row" t-att-row="row" t-att-columns="columns"
+                       t-att-save_url="save_url" t-att-delete_row_url="delete_row_url" t-att-reorder_url="reorder_url"/>
+                </t>
+            </tbody>
+        </table>
+        <t t-if="add_row_url">
+            <!-- hx-target="#{{id}}-tbody", PAS hx-target="tbody" : un bare
+                 tag selector cible le PREMIER <tbody> de TOUTE la page, pas
+                 celui de cette instance précise — bug réel trouvé en testant
+                 pour de vrai (jsdom + vrai htmx contre le serveur qui tourne,
+                 scripts/verify-editable-table-live.mjs) sur la landing page,
+                 qui affiche aussi xweb.table (donc un second <tbody>) juste
+                 au-dessus dans le catalogue : la ligne ajoutée atterrissait
+                 dans CE tableau-là, jamais dans xweb.editable_table — server
+                 correct (la ligne existait bien en base), swap htmx faux.
+                 Même id= que xweb.kanban/modal/drawer pour cette même raison
+                 (id, PAS une classe : doit être UNIQUE par instance). -->
+            <button type="button" class="btn btn-ghost btn-sm w-full justify-start rounded-none"
+                    t-att-hx-post="add_row_url" t-attf-hx-target="#{{id}}-tbody" hx-swap="beforeend">
+                <t t-call="xweb.icon" name="plus" extra_class="size-4"/>Ajouter une ligne
+            </button>
+        </t>
+    </div>
+</template>
+
+<!-- En-tête de colonne : même mécanique clic-pour-éditer que
+     xweb.editable_table_cell_text (span/input, style.display togglé en
+     inline — jamais une classe, voir plus bas), sur le libellé plutôt
+     qu'une valeur de ligne. rename_column_url='' -> texte simple, pas de
+     mode édition (aucun risque de casser un en-tête par erreur si
+     l'appelant ne veut pas de cette fonctionnalité). -->
+<template t-name="xweb.editable_table_header_cell">
+    <t t-set="col" t-default="{}"/>
+    <t t-set="rename_column_url" t-default="''"/>
+    <t t-if="not rename_column_url">
+        <th><t t-esc="col.get('label', '')"/></th>
+    </t>
+    <t t-else="1">
+        <th>
+            <span class="cell-display block px-1 py-0.5 rounded hover:bg-base-200 cursor-text"
+                  _="on click hide me then show (next &lt;input/&gt;) then call (next &lt;input/&gt;).focus() then call (next &lt;input/&gt;).select()">
+                <t t-esc="col.get('label', '')"/>
+            </span>
+            <input type="text" class="input input-xs input-ghost w-full font-normal normal-case" style="display:none"
+                   t-att-value="col.get('label', '')"
+                   t-attf-hx-patch="{{rename_column_url}}/{{col.get('key')}}"
+                   hx-vals="js:{label: event.target.value}"
+                   hx-trigger="change, keyup[key=='Enter']" hx-target="closest th" hx-swap="outerHTML"
+                   _="on blur hide me then show previous &lt;span/&gt;"/>
+        </th>
+    </t>
+</template>
+
+<!-- Une ligne à part (t-name propre) : add_row_url répond avec CE template
+     seul (fragment <tr>), pas la grille entière — même schéma que
+     xweb.contact_row ailleurs dans ce dépôt (une route qui rend un
+     fragment htmx réutilise le template de la ligne, jamais dupliqué). -->
+<template t-name="xweb.editable_table_row">
+    <t t-set="row" t-default="{}"/>
+    <t t-set="columns" t-default="[]"/>
+    <t t-set="save_url" t-default="''"/>
+    <t t-set="delete_row_url" t-default="''"/>
+    <t t-set="reorder_url" t-default="''"/>
+    <tr t-att-id="row.get('id')" draggable="true"
+        t-att-hx-post="reorder_url or None" hx-trigger="table:reordered"
+        hx-vals="js:{order: JSON.stringify((event.detail || {}).order || [])}" hx-swap="none"
+        _="on dragstart call event.dataTransfer.setData('text/plain', my.id) then add .opacity-50 to me
+           on dragend remove .opacity-50 from me
+           on dragover halt the event then add .border-t-2 .border-primary to me
+           on dragleave remove .border-t-2 .border-primary from me
+           on drop halt the event then remove .border-t-2 .border-primary from me
+              set draggedId to event.dataTransfer.getData('text/plain')
+              if draggedId is not my.id and draggedId is not ''
+                set draggedRow to document.getElementById(draggedId)
+                if draggedRow is not null
+                  set rect to my.getBoundingClientRect()
+                  if event.clientY &lt; (rect.top + (rect.height / 2))
+                    put draggedRow before me
+                  else
+                    put draggedRow after me
+                  end
+                  js(me) return Array.from(me.closest('tbody').querySelectorAll('tr')).map(r => r.id) end
+                  set orderIds to it
+                  send table:reordered(order: orderIds) to me
+                end
+              end">
+        <td class="cursor-grab active:cursor-grabbing opacity-40 text-center">⠿</td>
+        <t t-foreach="columns" t-as="col">
+            <t t-if="col['type'] == 'select'">
+                <t t-call="xweb.editable_table_cell_select" t-att-row="row" t-att-col="col" t-att-save_url="save_url"/>
+            </t>
+            <t t-elif="col['type'] == 'checkbox'">
+                <t t-call="xweb.editable_table_cell_checkbox" t-att-row="row" t-att-col="col" t-att-save_url="save_url"/>
+            </t>
+            <t t-else="1">
+                <t t-call="xweb.editable_table_cell_text" t-att-row="row" t-att-col="col" t-att-save_url="save_url"/>
+            </t>
+        </t>
+        <td>
+            <t t-if="delete_row_url">
+                <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Supprimer la ligne"
+                        t-attf-hx-delete="{{delete_row_url}}/{{row.get('id')}}" hx-target="closest tr" hx-swap="outerHTML">
+                    <t t-call="xweb.icon" name="trash" extra_class="size-3.5"/>
+                </button>
+            </t>
+        </td>
+    </tr>
+</template>
+
+<!-- Cellule texte : span en mode affichage, input en mode édition — les
+     deux existent dans le DOM dès le rendu serveur, _hyperscript bascule
+     l'un pour l'autre au clic, jamais de valeur interpolée dans un
+     attribut _ (t-att-value, échappé par le compilateur, comme partout
+     ailleurs dans ce dépôt — pas le raccourci t-attf-_ risqué de
+     combobox.xml). Enter ou perte de focus sauvegarde ; pas de "annuler
+     avec Échap" en v1 — délibéré, pour ne jamais avoir besoin de
+     réinjecter la valeur d'origine dans une chaîne _hyperscript. -->
+<template t-name="xweb.editable_table_cell_text">
+    <t t-set="row" t-default="{}"/>
+    <t t-set="col" t-default="{}"/>
+    <t t-set="save_url" t-default="''"/>
+    <td>
+        <span class="cell-display block px-1 py-0.5 rounded hover:bg-base-200 cursor-text min-h-6"
+              _="on click hide me then show (next &lt;input/&gt;) then call (next &lt;input/&gt;).focus() then call (next &lt;input/&gt;).select()">
+            <t t-esc="row.get(col.get('key'), '')"/>
+        </span>
+        <!-- style="display:none" (état initial), PAS une classe Tailwind
+             "hidden" : hide/show _hyperscript togglent style.display en
+             inline, jamais une classe CSS — vérifié en jsdom (une classe
+             "hidden" n'aurait jamais été retirée par ces commandes, trouvé
+             en écrivant scripts/verify-editable-table.mjs). -->
+        <!-- value: event.target.value dans hx-vals, PAS le mécanisme
+             d'inclusion automatique de htmx (name=) — cet input n'a jamais
+             porté de name=, donc htmx n'avait RIEN à inclure sous "value" :
+             la requête partait avec column= mais sans value= du tout, la
+             cellule se vidait au lieu de se sauvegarder. Trouvé en
+             inspectant le corps réel de la requête XHR (curl/jsdom seuls
+             ne l'auraient jamais montré), voir docs/components.md#editable_table. -->
+        <input type="text" class="input input-sm input-ghost w-full cell-input" style="display:none"
+               t-att-value="row.get(col.get('key'), '')"
+               t-attf-hx-patch="{{save_url}}/{{row.get('id')}}"
+               t-attf-hx-vals="js:{column: '{{col.get('key')}}', value: event.target.value}"
+               hx-trigger="change, keyup[key=='Enter']" hx-target="closest td" hx-swap="outerHTML"
+               _="on blur hide me then show previous &lt;span/&gt;"/>
+    </td>
+</template>
+
+<!-- Cellule select : étiquette colorée (badge), clic ouvre un menu
+     DaisyUI natif (focus/tabindex, zéro JS pour ouvrir/fermer) — même
+     idiome que xweb.combobox pour lire la valeur choisie (attribut
+     data-value, jamais interpolé en dur dans le script). -->
+<template t-name="xweb.editable_table_cell_select">
+    <t t-set="row" t-default="{}"/>
+    <t t-set="col" t-default="{}"/>
+    <t t-set="save_url" t-default="''"/>
+    <t t-set="current" t-value="row.get(col.get('key'), '')"/>
+    <t t-set="options" t-value="col.get('options') or []"/>
+    <td>
+        <!-- value: event.target.value — même correctif que la cellule
+             texte, même raison (pas de name= sur cet input, htmx n'a rien
+             à inclure automatiquement). -->
+        <input type="hidden" t-attf-id="cell-{{row.get('id')}}-{{col.get('key')}}" t-att-value="current"
+               t-attf-hx-patch="{{save_url}}/{{row.get('id')}}"
+               t-attf-hx-vals="js:{column: '{{col.get('key')}}', value: event.target.value}"
+               hx-trigger="change" hx-target="closest td" hx-swap="outerHTML"/>
+        <div class="dropdown">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-xs">
+                <t t-foreach="options" t-as="opt">
+                    <t t-if="opt['value'] == current">
+                        <span t-attf-class="badge badge-sm badge-{{opt.get('color', 'neutral')}}"><t t-esc="opt['label']"/></span>
+                    </t>
+                </t>
+                <t t-if="not current"><span class="opacity-40 text-xs">—</span></t>
+            </div>
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-40 p-2 shadow-lg border border-base-300">
+                <t t-foreach="options" t-as="opt">
+                    <li>
+                        <a t-att-data-value="opt['value']"
+                           t-attf-_="on click
+                                        set #cell-{{row.get('id')}}-{{col.get('key')}}.value to my dataset.value
+                                        then send change to #cell-{{row.get('id')}}-{{col.get('key')}}">
+                            <span t-attf-class="badge badge-sm badge-{{opt.get('color', 'neutral')}}"><t t-esc="opt['label']"/></span>
+                        </a>
+                    </li>
+                </t>
+            </ul>
+        </div>
+    </td>
+</template>
+
+<!-- Cellule case à cocher : pas de mode édition séparé, sauvegarde
+     immédiate au changement — comme dans Notion. -->
+<template t-name="xweb.editable_table_cell_checkbox">
+    <t t-set="row" t-default="{}"/>
+    <t t-set="col" t-default="{}"/>
+    <t t-set="save_url" t-default="''"/>
+    <td class="text-center">
+        <input type="checkbox" class="checkbox checkbox-sm" t-att-checked="row.get(col.get('key'), False)"
+               t-attf-hx-patch="{{save_url}}/{{row.get('id')}}"
+               t-attf-hx-vals="js:{column: '{{col.get('key')}}', value: event.target.checked}"
+               hx-trigger="change" hx-target="closest td" hx-swap="outerHTML"/>
+    </td>
+</template>
+
+</templates>

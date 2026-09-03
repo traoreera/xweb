@@ -1,5 +1,8 @@
 # xweb — Documentation
 
+!!! tip "Vous voulez juste UTILISER xweb/xcore ?"
+    Cette page et le reste de `docs/*.md` expliquent *pourquoi* le système est construit comme il l'est. Pour des exemples précis et copiables — construire une page, un composant, une contribution de nav — allez directement au [**Guide**](guide/index.md).
+
 > **Statut de ce corpus** : xweb existe en code, réellement — ces documents ont commencé comme la spécification à partir de laquelle l'implémenter, écrits avec la même confiance que s'ils décrivaient un système livré ; depuis, le système livré a rattrapé la spec (moteur, shell, theming, sécurité, auth, i18n, PDF, email, contexte multi-tenant, `t-inherit-mode="primary"` — tout ce que ce document listait comme "à faire" ou "hors scope" est fait, voir [Questions ouvertes](#questions-ouvertes) et `spec-v1.md` §5). Ce qui n'a pas encore de doc dédiée reste écrit au présent normatif par habitude — vérifier `docs/*.md` individuellement pour un statut précis plutôt que de faire confiance à ce paragraphe seul.
 >
 > Issu de trois documents de conception successifs (*Patch Points* → *QWeb for XCore* → *xweb Blueprint*), basés sur une lecture directe de `traoreera/xcore`, `NiCE-DEV226/xui` et `traoreera/microframe` au 2 septembre 2026.
@@ -8,6 +11,7 @@
 
 | Document | Contenu |
 |---|---|
+| [`guide/`](guide/index.md) | **Guide d'utilisation** — comment faire, avec des exemples précis (page perso, composants, nav, filtres, pattern d'appel à un plugin JSON) |
 | [`spec-v1.md`](spec-v1.md) | Principes fondateurs, contrat avec le kernel xcore, architecture globale |
 | [`language.md`](language.md) | Référence des directives `t-*` du moteur de templates |
 | [`inheritance.md`](inheritance.md) | `t-inherit` / XPath — extension non-destructive entre plugins |
@@ -40,7 +44,7 @@ Un moteur de rendu QWeb (parseur XML, compilateur de directives, héritage par X
 
 - **`t-name`** : `<package_id>.<nom>` (style Odoo) — voir [`language.md`](language.md#t-name). Validé en pratique, plus une question ouverte.
 - **Nom du dépôt** : `xweb` — utilisé partout dans le code réel (package, imports, docs), pas juste une proposition.
-- **`plugin_prefix`** : `/plugins/` (pluriel) — pas une convention xweb, une exigence de déploiement sur `app.plugin_prefix` dans `integration.yaml` (le défaut xcore réel est `/plugin`, singulier). Voir [`integration-xcore.md`](integration-xcore.md).
+- **`plugin_prefix`** : pas une convention xweb — un vrai réglage de déploiement, `app.plugin_prefix` dans `integration.yaml` (défaut xcore réel : `/plugin`, singulier ; ce projet l'a fait varier entre `/plugins` et `/app` selon les périodes). Jamais un littéral codé en dur nulle part dans le code — `xweb.paths.plugin_prefix()` est la seule source de vérité, voir [`integration-xcore.md`](integration-xcore.md).
 
 ## JS et CSS — vendorisés et vérifiés
 
@@ -66,7 +70,7 @@ Vérifié en conditions réelles : `localStorage` pré-rempli avant le tout prem
 
 ## Sécurité — construite, puis réellement branchée
 
-`CSRFMiddleware`/`SecurityHeadersMiddleware` (Phase 3) et `xcore.setup(app)` (TraceContextMiddleware/TenantMiddleware) étaient testés mais jamais ajoutés à l'app réelle du squelette — trouvé en faisant le point sur ce qu'il restait, pas repéré à la construction. Corrigé dans `main.py`, vérifié en direct : en-têtes CSP présents, mutation avec cookie de session + mauvais token rejetée (403), sans cookie acceptée normalement. Détail dans [`integration-xcore.md`](integration-xcore.md#sécurité--câblée-dans-mainpy-pas-juste-construite).
+`CSRFMiddleware`/`SecurityHeadersMiddleware` (Phase 3) et `xcore.setup(app)` (TraceContextMiddleware/TenantMiddleware) étaient testés mais jamais ajoutés à l'app réelle du squelette — trouvé en faisant le point sur ce qu'il restait, pas repéré à la construction. Corrigé dans `main.py`, vérifié en direct : en-têtes CSP présents, mutation avec cookie de session + mauvais token rejetée (403), sans cookie acceptée normalement. Détail dans [`integration-xcore.md`](integration-xcore.md#securite-cablee-dans-mainpy-pas-juste-construite).
 
 ## Questions ouvertes
 

@@ -3,20 +3,18 @@
 La mécanique de glisser-déposer elle-même (_hyperscript : dragstart/
 dragover/drop, `put ... at end of ...`) est vérifiée pour de vrai contre le
 fichier vendorisé dans scripts/verify-hyperscript.mjs (jsdom) — pas ici,
-Python n'exécute aucun _hyperscript. Ici : le rendu (props, structure,
-dégradation) et l'exemple concret plugins/demo (page + persistance de
-/plugins/demo/kanban/move) via un vrai cycle ASGI.
+Python n'exécute aucun _hyperscript. Ici : uniquement le rendu (props,
+structure, dégradation), en isolation. L'exemple concret bout en bout qui
+vivait ici (plugins/demo, page + persistance de /plugins/demo/kanban/move
+via un vrai cycle ASGI) a été retiré avec plugins/ — à réécrire contre le
+prochain plugin qui utilise xweb.kanban, voir docs/plugins.md §5.
 """
 
 from __future__ import annotations
 
-import sys
-import types
 from pathlib import Path
 
 import pytest
-from fastapi import APIRouter, FastAPI
-from fastapi.testclient import TestClient
 
 from xweb.engine.registry import QwebRegistry
 
@@ -94,99 +92,3 @@ def test_kanban_with_no_columns_renders_an_empty_board_not_a_crash(registry):
     html = registry.render("xweb.kanban", {})
     assert "kanban" in html
     assert "kanban-column" not in html
-
-
-# ---------------------------------------------------------------------
-# plugins/demo — page + persistance réelle de /kanban/move (cycle ASGI)
-# ---------------------------------------------------------------------
-
-
-def load_demo_pkg():
-    src = ROOT / "plugins" / "demo" / "src"
-    if "demo_kanban_test_src" not in sys.modules:
-        pkg = types.ModuleType("demo_kanban_test_src")
-        pkg.__path__ = [str(src)]
-        sys.modules["demo_kanban_test_src"] = pkg
-    return __import__("demo_kanban_test_src.main", fromlist=["main"])
-
-
-class FakePluginCtx:
-    name = "demo"
-    tenant_id = None
-    caller = None
-
-    def get_service(self, name):
-        return None
-
-
-@pytest.fixture
-def demo_client(monkeypatch):
-    # mount_xweb_page résout l'utilisateur courant via le vrai xcore
-    # (xcore.kernel.api.rbac._resolve_user, qui exige un backend d'auth
-    # chargé) — même contournement que tests/test_i18n.py/test_mount.py :
-    # visiteur anonyme, ce que cette page publique de démo accepte de toute
-    # façon (pas de ctx.require_user()/require_role() dessus).
-    async def fake_resolve(request):
-        return None
-
-    monkeypatch.setattr("xweb.context.resolve_user_or_anonymous", fake_resolve)
-
-    main_mod = load_demo_pkg()
-    # Repartir d'un plateau frais à chaque test — _KANBAN_BOARD est un état
-    # de MODULE partagé (comme en vrai, docs/components.md#xweb.kanban) ;
-    # sans ce reset un test influencerait le suivant.
-    import copy
-    fresh = copy.deepcopy(main_mod._KANBAN_BOARD)
-    monkeypatch.setattr(main_mod, "_KANBAN_BOARD", fresh)
-
-    registry = QwebRegistry()
-    registry.register_dir(COMPONENTS_DIR)
-    registry.register_dir(ROOT / "plugins" / "demo" / "templates", source_plugin="demo")
-
-    class Ctx:
-        def get_service(self, name):
-            return types.SimpleNamespace(engine=registry) if name == "ext.xweb" else None
-
-    plugin = main_mod.Plugin()
-    plugin.ctx = Ctx()
-    router: APIRouter = plugin.get_router()
-
-    app = FastAPI()
-    app.include_router(router, prefix="/plugins/demo")
-    return TestClient(app), main_mod
-
-
-def test_kanban_page_renders_the_seeded_board(demo_client):
-    client, _ = demo_client
-    r = client.get("/plugins/demo/kanban")
-    assert r.status_code == 200
-    assert "kanban-column" in r.text
-    assert "Écrire les specs" in r.text
-
-
-def test_kanban_move_persists_the_card_in_the_new_column(demo_client):
-    client, main_mod = demo_client
-    # kc-1 part de "todo" -> déplacé vers "done"
-    r = client.post("/plugins/demo/kanban/move", data={"card_id": "kc-1", "column_id": "done"})
-    assert r.status_code == 204
-    assert any(c["id"] == "kc-1" for c in main_mod._KANBAN_BOARD["done"]["cards"])
-    assert not any(c["id"] == "kc-1" for c in main_mod._KANBAN_BOARD["todo"]["cards"])
-    # Vraie persistance -> une deuxième requête (nouvelle page) voit le changement
-    r2 = client.get("/plugins/demo/kanban")
-    assert r2.status_code == 200
-
-
-def test_kanban_move_with_unknown_card_id_is_a_noop_not_an_error(demo_client):
-    client, main_mod = demo_client
-    before = copy_state = {k: len(v["cards"]) for k, v in main_mod._KANBAN_BOARD.items()}
-    r = client.post("/plugins/demo/kanban/move", data={"card_id": "does-not-exist", "column_id": "done"})
-    assert r.status_code == 204
-    after = {k: len(v["cards"]) for k, v in main_mod._KANBAN_BOARD.items()}
-    assert before == after
-
-
-def test_kanban_move_with_unknown_column_id_is_a_noop_not_an_error(demo_client):
-    client, main_mod = demo_client
-    r = client.post("/plugins/demo/kanban/move", data={"card_id": "kc-1", "column_id": "nowhere"})
-    assert r.status_code == 204
-    assert any(c["id"] == "kc-1" for c in main_mod._KANBAN_BOARD["todo"]["cards"])

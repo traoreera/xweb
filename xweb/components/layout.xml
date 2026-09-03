@@ -42,6 +42,10 @@
     <link rel="stylesheet" href="/xweb-static/app.css"/>
     <script src="/xweb-static/htmx.min.js"></script>
     <script src="/xweb-static/_hyperscript.min.js"></script>
+    <!-- xweb/static/storage.js — wrapper localStorage pour du code NEUF
+         (préférences d'affichage propres à un plugin). N'est PAS utilisé
+         par le thème/sidebar ci-dessus, voir la docstring du fichier. -->
+    <script src="/xweb-static/storage.js"></script>
 </template>
 
 <template t-name="xweb.sidebar_toggle">
