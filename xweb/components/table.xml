@@ -1,0 +1,42 @@
+<!--
+    columns : [{key, label, class?}] ; rows : liste de dicts. Un slot non vide
+    remplace le <tbody> auto (lignes sur mesure). colspan="99" pour la ligne
+    vide : pas de len() dans les expressions (pas de builtins), et un
+    navigateur borne le colspan au nombre réel de colonnes.
+-->
+<template t-name="xweb.table">
+    <t t-set="columns" t-default="[]"/>
+    <t t-set="rows" t-default="[]"/>
+    <t t-set="empty" t-default="'Aucun élément.'"/>
+    <t t-set="zebra" t-default="False"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="pin_rows" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="custom_body" t-value="(slot or '').strip()"/>
+    <div t-attf-class="overflow-x-auto rounded-box border border-base-300 bg-base-100 {{extra_class}}">
+        <table t-attf-class="table table-{{size}} {{ 'table-zebra' if zebra else '' }} {{ 'table-pin-rows' if pin_rows else '' }}">
+            <thead>
+                <tr>
+                    <t t-foreach="columns" t-as="col">
+                        <th t-att-class="col.get('class') or None"><t t-esc="col['label']"/></th>
+                    </t>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-if="custom_body"><t t-out="slot"/></t>
+                <t t-elif="rows">
+                    <t t-foreach="rows" t-as="row">
+                        <tr>
+                            <t t-foreach="columns" t-as="col">
+                                <td t-att-class="col.get('class') or None"><t t-esc="row.get(col['key'], '')"/></td>
+                            </t>
+                        </tr>
+                    </t>
+                </t>
+                <t t-else="1">
+                    <tr><td colspan="99" class="text-center opacity-60 py-8"><t t-esc="empty"/></td></tr>
+                </t>
+            </tbody>
+        </table>
+    </div>
+</template>

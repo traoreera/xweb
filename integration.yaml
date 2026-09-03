@@ -1,0 +1,87 @@
+app:
+  name: "xweb-skeleton"
+  env: "development"
+  secret_key: "debug-key"
+  # Défaut réel de xcore = "/plugin" (singulier, xcore/configurations/sections.py:93)
+  # — xui, et donc les docs xweb copiées dessus, supposent "/plugins/" (pluriel)
+  # partout sans que ça ait jamais été vérifié contre le vrai code source.
+  # Overridé ici plutôt que de rouvrir tous les docs xweb un par un.
+  plugin_prefix: "/app"
+
+plugins:
+  directory: "./plugins"
+  # Champ SÉPARÉ de app.secret_key (xcore/configurations/loader.py:191-196,
+  # confirmé en creusant une "Signature invalide" en lançant le squelette) —
+  # doit matcher la clé utilisée pour signer plugins/demo/plugin.sig.
+  secret_key: "debug-key"
+  strict_trusted: false
+
+services:
+  # plugins/auth (docs/auth.md) exige self.get_service("db") et ("cache")
+  # sans repli — DatabaseServiceProvider n'enregistre "db" QUE si
+  # services.databases n'est pas vide (xcore/services/container.py:46-51,
+  # vérifié). "cache" est déjà gratuit (CacheConfig() par défaut est
+  # toujours truthy → backend "memory" sans section explicite).
+  databases:
+    default:
+      type: sqlasync
+      url: "sqlite+aiosqlite:///./xweb.db"
+
+  extensions:
+    xweb:
+      module: xweb.engine.integration.xcore:XwebExtension
+      config:
+        # xweb.button, xweb.shell, xweb.toggle_demo… n'ont plus besoin d'être
+        # listés ici : XwebExtension.init() charge xweb/components/ tout
+        # seul, embarqué dans le paquet xweb (docs/integration-xcore.md).
+        # `directory:` reste disponible si CE projet voulait un jour son
+        # propre dossier de templates partagés en plus — pas le cas ici.
+        namespaces:
+          demo: "plugins/demo/templates"
+          # plugins/account : pont HTML complet vers plugins/auth (login, MFA,
+          # organisations, profil, sessions…) — remplace l'ancien plugins/login.
+          account: "plugins/account/templates"
+          # plugins/auth n'a pas de templates xweb — c'est une API JSON pure
+          # (routes/*.py, aucun .xml) — voir docs/auth.md.
+          # Pages propres à CE projet (pas à un plugin) — pour l'instant la
+          # landing page sur "/". Aucun plugin ne peut servir "/" lui-même :
+          # xcore préfixe systématiquement chaque routeur de plugin sous
+          # /plugins/<nom>/ (xcore/__init__.py::boot(), vérifié) — la route
+          # "/" est donc montée directement par main.py, après xcore.boot(),
+          # au même endroit que bind_hot_reload().
+          site: "templates"
+        # docs/i18n.md — codes en plus du français source ("fr", jamais
+        # listé lui-même : xweb/i18n.py::Catalog n'a besoin d'aucun fichier
+        # pour lui, _() y est l'identité). Périmètre traduit pour l'instant :
+        # la landing page + le parcours d'auth anonyme (locales/en.json) —
+        # le reste de l'appli reste en français, une clé absente du
+        # catalogue retombe simplement sur le texte source, jamais une erreur.
+        locales_dir: "locales"
+        locales: ["en"]
+    google:
+      module: extensions.googleService.service:GoogleServiceClient
+      config:
+        timeout: 10
+    # plugins/auth appelle self.get_service("ext.email") SANS filet (contrairement
+    # à ext.google, protégé par un try/except) — contrat lu dans
+    # plugins/auth/src/services/email/base.py : .send(to,subject,body,is_html)
+    # async + .queue(...) sync. xcore ne fournit aucune extension email
+    # intégrée (vérifié). extensions/email.py logue au lieu d'envoyer — pas
+    # de credentials SMTP réels dans plugins/auth/.env pour l'instant.
+
+    email:
+      module: extensions.email:ConsoleEmailExtension
+      config: {}
+    pubsub:
+      module: extensions.pubsub.service:PubSubClient
+      config:
+        provider: redis
+        redis:
+          url: redis://localhost:6379/1
+
+    web_socket:
+      module: extensions.xwebsocket.main:WsManager
+      config:
+        channel:
+        - hello
+        - xcompany

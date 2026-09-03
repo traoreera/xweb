@@ -1,0 +1,22 @@
+<template t-name="xweb.radio">
+    <t t-set="name" t-default="''"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="label" t-default="''"/>
+    <t t-set="description" t-default="''"/>
+    <t t-set="checked" t-default="False"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="color" t-default="'primary'"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <label t-attf-class="flex items-start gap-3 cursor-pointer {{ 'opacity-50 cursor-not-allowed' if disabled else '' }} {{extra_class}}">
+        <input type="radio" t-att-name="name or None" t-att-value="value or None" t-att-checked="checked" t-att-disabled="disabled"
+               t-attf-class="radio radio-{{color}} radio-{{size}} mt-0.5"/>
+        <t t-if="(slot or '').strip()"><t t-out="slot"/></t>
+        <t t-elif="label">
+            <span class="flex-1">
+                <span class="block font-medium"><t t-esc="label"/></span>
+                <t t-if="description"><span class="block text-sm opacity-70 mt-0.5"><t t-esc="description"/></span></t>
+            </span>
+        </t>
+    </label>
+</template>

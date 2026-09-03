@@ -1,0 +1,33 @@
+<!--
+    xweb.csrf  — champ caché csrf_token (xweb/csrf.py). Le token est dans le
+                 contexte de page (`csrf_token`, xweb/mount.py) mais un t-call
+                 isole son contexte : le passer explicitement,
+                 <t t-call="xweb.csrf" t-att-token="csrf_token"/>.
+    xweb.form  — <form> qui pose le csrf tout seul (POST) ; boost=False pour
+                 une vraie navigation (login/logout : cookies posés par la
+                 réponse, page cible hors shell).
+-->
+<templates>
+<template t-name="xweb.csrf">
+    <t t-set="token" t-default="''"/>
+    <input type="hidden" name="csrf_token" t-att-value="token"/>
+</template>
+
+<template t-name="xweb.form">
+    <t t-set="action" t-default="''"/>
+    <t t-set="method" t-default="'post'"/>
+    <t t-set="token" t-default="''"/>
+    <t t-set="boost" t-default="True"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="multipart" t-default="False"/>
+    <t t-set="extra_class" t-default="'flex flex-col gap-4'"/>
+    <t t-set="boost_off" t-value="boost in (False, 'false', 'False', '0', 0)"/>
+    <form t-att-id="id or None" t-att-method="method" t-att-action="action or None"
+          t-att-enctype="'multipart/form-data' if multipart else None"
+          t-att-hx-boost="'false' if boost_off else None"
+          t-attf-class="{{extra_class}}">
+        <t t-if="method.lower() == 'post'"><t t-call="xweb.csrf" t-att-token="token"/></t>
+        <t t-out="slot"/>
+    </form>
+</template>
+</templates>

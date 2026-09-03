@@ -1,0 +1,5 @@
+<template t-name="xweb.divider">
+    <t t-set="vertical" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="divider {{ 'divider-horizontal' if vertical else '' }} {{extra_class}}"><t t-out="slot"/></div>
+</template>

@@ -1,0 +1,15 @@
+plugins/
+extensions/
+locales/
+node_modules/
+scripts/
+conf/
+.venv/
+.env
+__pycache__/
+.vscode
+.mypy_cache/
+.pytest_cache/
+.templates/
+AGENTS.md
+CLAUDE.md

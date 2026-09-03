@@ -1,0 +1,14 @@
+<!--
+    Composant minimal pour valider le pari central de xweb Blueprint §2 :
+    hx-* (htmx) et _ (_hyperscript) traversent le compilateur sans aucun
+    traitement spécial, contrairement à @click/:class d'Alpine.js qui
+    auraient fait planter le parseur XML. Voir tests/test_compiler.py.
+-->
+<template t-name="xweb.toggle_demo">
+    <t t-set="plugin_prefix" t-default="'/plugins'"/>
+    <button type="button" class="btn btn-ghost btn-circle"
+            t-attf-hx-post="{{plugin_prefix}}/demo/toggle" hx-target="#status" hx-swap="innerHTML"
+            _="on click toggle .dark on the documentElement">
+        <t t-esc="label"/>
+    </button>
+</template>

@@ -1,0 +1,72 @@
+<!--
+    xweb.email_layout — layout d'email (docs/email.md, xweb/email.py).
+
+    Volontairement indépendant de xweb.shell_head/app.css, exactement pour
+    la même raison que xweb.pdf_document (xweb/components/pdf.xml) : de
+    nombreux clients mail (Outlook en tête) suppriment les balises
+    <style>, et aucun n'implémente Flexbox/Grid de façon fiable — un
+    <table> + attributs style="..." inline reste le seul dénominateur
+    commun qui rende à peu près correctement partout. Pas de classes
+    Tailwind/DaisyUI ici, elles n'ont aucune chance de survivre au
+    nettoyage HTML que la plupart des clients mail appliquent.
+
+    Props : page_title (<title>, invisible dans le corps du mail),
+    app_name, content (injecté par render_email()).
+-->
+<templates>
+
+<template t-name="xweb.email_layout">
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title><t t-esc="page_title"/></title>
+</head>
+<body style="margin:0; padding:0; background-color:#f3f4f6; font-family:Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6; padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden;">
+                    <tr>
+                        <td style="background-color:#111827; padding:20px 32px;">
+                            <span style="color:#ffffff; font-size:18px; font-weight:bold;"><t t-esc="app_name"/></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px; color:#1f2328; font-size:14px; line-height:1.6;">
+                            <t t-out="content"/>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:16px 32px; background-color:#f9fafb; color:#6b7280; font-size:12px; text-align:center;">
+                            <t t-esc="app_name"/>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+</template>
+
+<!--
+    xweb.email_button — lien d'action stylé en bouton (pas un <button>,
+    inutilisable en email : un <a> avec du padding inline est le seul
+    bouton qui rende de façon fiable, même logique que le layout).
+-->
+<template t-name="xweb.email_button">
+    <t t-set="href" t-default="'#'"/>
+    <t t-set="color" t-default="'#111827'"/>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+        <tr>
+            <td t-attf-style="background-color:{{color}}; border-radius:6px;">
+                <a t-att-href="href" style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:14px; font-weight:bold; text-decoration:none;">
+                    <t t-out="slot"/>
+                </a>
+            </td>
+        </tr>
+    </table>
+</template>
+
+</templates>

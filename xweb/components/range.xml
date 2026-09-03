@@ -1,0 +1,14 @@
+<template t-name="xweb.range">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="min" t-default="0"/>
+    <t t-set="max" t-default="100"/>
+    <t t-set="step" t-default="1"/>
+    <t t-set="value" t-default="None"/>
+    <t t-set="color" t-default="'primary'"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <input type="range" t-att-name="name or None" t-att-id="id or None" t-att-min="min" t-att-max="max" t-att-step="step"
+           t-att-value="value" t-att-disabled="disabled" t-attf-class="range range-{{color}} range-{{size}} {{extra_class}}"/>
+</template>

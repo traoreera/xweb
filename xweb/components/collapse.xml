@@ -1,0 +1,16 @@
+<!--
+    xweb.collapse — <details>/<summary> natif + classes DaisyUI collapse.
+    Zéro JS, zéro _hyperscript : le navigateur gère l'ouverture/fermeture
+    lui-même (docs/components.md notait ce composant comme candidat natif
+    depuis le début).
+-->
+<template t-name="xweb.collapse">
+    <t t-set="title" t-default="''"/>
+    <t t-set="variant" t-default="'arrow'"/>
+    <t t-set="open" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <details t-attf-class="collapse {{ 'collapse-' + variant if variant else '' }} bg-base-100 border border-base-300 {{extra_class}}" t-att-open="open or None">
+        <summary class="collapse-title font-semibold"><t t-esc="title"/></summary>
+        <div class="collapse-content text-sm"><t t-out="slot"/></div>
+    </details>
+</template>

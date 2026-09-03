@@ -1,0 +1,83 @@
+site_name: xweb + xcore
+site_description: >-
+  Moteur de rendu QWeb, SDK de plugin xweb et intégration xcore — guide
+  d'utilisation avec exemples précis, et référence complète (docs/*.md).
+docs_dir: docs
+
+theme:
+  name: material
+  language: fr
+  icon:
+    logo: material/puzzle-outline
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Basculer en thème sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Basculer en thème clair
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+      title: Sur cette page
+
+nav:
+  - Accueil: index.md
+  - Guide:
+      - guide/index.md
+      - Démarrage rapide: guide/quickstart.md
+      - Votre première page: guide/first-page.md
+      - Templates QWeb: guide/templates.md
+      - Composants xweb: guide/components.md
+      - Shell, nav et permissions: guide/shell-and-nav.md
+      - Parler à un plugin JSON: guide/auth-pattern.md
+  - Référence:
+      - spec-v1.md
+      - plugins.md
+      - integration-xcore.md
+      - language.md
+      - inheritance.md
+      - shell.md
+      - components.md
+      - theming.md
+      - i18n.md
+      - pdf.md
+      - email.md
+      - auth.md
+      - cli.md
+      - migration-guide.md

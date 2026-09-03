@@ -1,0 +1,8 @@
+<!-- value absent → barre indéterminée (DaisyUI anime <progress> sans value). -->
+<template t-name="xweb.progress">
+    <t t-set="value" t-default="None"/>
+    <t t-set="max" t-default="100"/>
+    <t t-set="color" t-default="'primary'"/>
+    <t t-set="extra_class" t-default="'w-full'"/>
+    <progress t-attf-class="progress progress-{{color}} {{extra_class}}" t-att-value="value" t-att-max="max"></progress>
+</template>

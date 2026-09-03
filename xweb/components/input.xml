@@ -1,0 +1,36 @@
+<template t-name="xweb.input">
+    <t t-set="type" t-default="'text'"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="placeholder" t-default="''"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="readonly" t-default="False"/>
+    <t t-set="required" t-default="False"/>
+    <t t-set="autofocus" t-default="False"/>
+    <t t-set="invalid" t-default="False"/>
+    <t t-set="autocomplete" t-default="''"/>
+    <t t-set="minlength" t-default="None"/>
+    <t t-set="maxlength" t-default="None"/>
+    <t t-set="left_addon" t-default="''"/>
+    <t t-set="right_addon" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="relative flex items-center {{extra_class}}">
+        <t t-if="left_addon">
+            <div class="absolute left-0 inset-y-0 flex items-center pl-3 pointer-events-none text-base-content/60">
+                <t t-out="left_addon"/>
+            </div>
+        </t>
+        <input t-att-type="type" t-att-name="name or None" t-att-id="id or None" t-att-value="value or None"
+               t-att-placeholder="placeholder or None" t-att-disabled="disabled" t-att-readonly="readonly"
+               t-att-required="required" t-att-autofocus="autofocus" t-att-autocomplete="autocomplete or None"
+               t-att-minlength="minlength" t-att-maxlength="maxlength"
+               t-attf-class="input input-bordered w-full input-{{size}} {{ 'input-error' if invalid else '' }} {{ 'pl-10' if left_addon else '' }} {{ 'pr-10' if right_addon else '' }}"/>
+        <t t-if="right_addon">
+            <div class="absolute right-0 inset-y-0 flex items-center pr-3 pointer-events-none text-base-content/60">
+                <t t-out="right_addon"/>
+            </div>
+        </t>
+    </div>
+</template>

@@ -1,0 +1,22 @@
+<template t-name="xweb.menu">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="title" t-default="''"/>
+    <t t-set="current_path" t-default="''"/>
+    <t t-set="horizontal" t-default="False"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="extra_class" t-default="'bg-base-100 rounded-box w-56'"/>
+    <ul t-attf-class="menu menu-{{size}} {{ 'menu-horizontal' if horizontal else '' }} {{extra_class}}">
+        <t t-if="title"><li class="menu-title"><t t-esc="title"/></li></t>
+        <t t-foreach="items" t-as="item">
+            <li>
+                <a t-att-href="item.get('href')"
+                   t-attf-class="flex items-center gap-2 {{ 'menu-active' if item.get('active') or (current_path and item.get('href') == current_path) else '' }}">
+                    <t t-if="item.get('icon')"><t t-call="xweb.icon" t-att-name="item['icon']" extra_class="size-4 opacity-70"/></t>
+                    <span class="flex-1"><t t-esc="item['label']"/></span>
+                    <t t-if="item.get('badge')"><span class="badge badge-sm badge-soft"><t t-esc="item['badge']"/></span></t>
+                </a>
+            </li>
+        </t>
+        <t t-out="slot"/>
+    </ul>
+</template>

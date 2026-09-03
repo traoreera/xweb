@@ -1,0 +1,13 @@
+<template t-name="xweb.label">
+    <t t-set="for_" t-default="''"/>
+    <t t-set="badge" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <label t-att-for="for_ or None" t-attf-class="block font-semibold mb-1.5 {{extra_class}}">
+        <span class="flex items-center gap-2">
+            <t t-out="slot"/>
+            <t t-if="badge">
+                <t t-call="xweb.badge" color="neutral" size="sm" extra_class=""><t t-esc="badge"/></t>
+            </t>
+        </span>
+    </label>
+</template>

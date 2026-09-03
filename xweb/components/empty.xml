@@ -1,0 +1,12 @@
+<template t-name="xweb.empty">
+    <t t-set="icon" t-default="'inbox'"/>
+    <t t-set="title" t-default="'Rien à afficher'"/>
+    <t t-set="message" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="flex flex-col items-center justify-center text-center gap-3 py-12 px-4 {{extra_class}}">
+        <div class="rounded-full bg-base-200 p-4 text-base-content/50"><t t-call="xweb.icon" t-att-name="icon" extra_class="size-8"/></div>
+        <h3 class="font-semibold"><t t-esc="title"/></h3>
+        <t t-if="message"><p class="text-sm opacity-70 max-w-sm"><t t-esc="message"/></p></t>
+        <div class="flex gap-2"><t t-out="slot"/></div>
+    </div>
+</template>

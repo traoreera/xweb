@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}
+
+/* Thème de marque "XCoreHub" — accent teal (mascotte), esthétique GitHub
+   (surfaces plates, bordures 1px qui font la mise en page, coins serrés,
+   ombres quasi plates, pas de glassmorphism) — remplace les couleurs
+   bleu/violet par défaut de DaisyUI sur les deux thèmes EXISTANTS
+   ("light"/"dark"), jamais un 3e thème séparé : xweb.theme_toggle
+   (xweb/components/layout.xml, _hyperscript) et le script anti-flash de
+   xweb.shell_head ne connaissent que ces deux valeurs littérales — changer
+   ça demanderait de toucher au mécanisme de bascule partout dans le
+   codebase pour un gain nul, la marque n'a qu'une seule identité par mode
+   clair/sombre, pas plusieurs thèmes au choix.
+
+   Couleurs reprises telles quelles d'une maquette CSS fournie par
+   l'utilisateur (palette GitHub Primer + accent mascotte) plutôt que
+   traduites en oklch — DaisyUI accepte n'importe quelle fonction couleur
+   CSS valide pour ces tokens, testé en compilant. Correspondances avec les
+   tokens de la maquette d'origine, pour qui la retrouverait :
+     base-100 (cartes/topbar/sidebar, `bg-base-100`)   <- --surface2
+     base-200 (fond de page, `bg-base-200`)             <- --surface / --bg
+     base-300 (bordure PAR DÉFAUT, `border-base-300` —
+               22 usages dans xweb/components/**, de loin la
+               plus fréquente)                          <- --border
+     primary/info (lien, focus, nav active, badge info) <- --acc (teal)
+     success (alerte succès ET vert des boutons "primaires"
+               — même choix que GitHub Primer lui-même,
+               non touché par la demande : elle ne visait
+               que l'accent bleu)                        <- --success
+   --color-secondary n'a pas d'équivalent dans la maquette (GitHub Primer
+   n'a pas ce concept) — posé à une teinte neutre grise, peu utilisée dans
+   xweb aujourd'hui (seule badge.xml propose "secondary" parmi ses
+   couleurs). --depth/--noise à 0 : DaisyUI 5 ajoute par défaut un léger
+   ombrage/grain 3D à certains composants, à l'opposé du "near-flat, no
+   glow" demandé. */
+@plugin "daisyui/theme" {
+  name: "dark";
+  color-scheme: dark;
+  --color-base-100: #161b22;
+  --color-base-200: #0d1117;
+  --color-base-300: #30363d;
+  --color-base-content: #e6edf3;
+  --color-primary: #00c896;
+  --color-primary-content: #06120e;
+  --color-secondary: #6e7681;
+  --color-secondary-content: #e6edf3;
+  --color-accent: #33d9ad;
+  --color-accent-content: #06120e;
+  /* "neutral" est la couleur PAR DÉFAUT de xweb.badge (xweb/components/badge.xml,
+     t-default="'neutral'") — sert autant en usage "solid" (bg neutral +
+     texte neutral-content, ex. xweb/components/avatar.xml pour l'ancien style,
+     btn-neutral) qu'en usage "soft" par défaut de badge (color: le neutral
+     lui-même, PAS neutral-content — badge-soft{color:var(--badge-color)},
+     vérifié dans le CSS généré). Une teinte quasi noire ici (ce qu'était
+     --surface3 avant ce correctif, et ce qu'est le "neutral" du thème
+     "dark" DaisyUI par défaut : oklch(14% ...), tout aussi sombre) rend un
+     badge-soft neutral illisible : texte quasi noir sur fond quasi noir —
+     constaté en vrai sur le tableau "Membres" de plugins/account/
+     organization.xml (badges de rôle). --text2 de la maquette (gris moyen,
+     déjà utilisé pour le texte secondaire) marche dans les deux usages ;
+     xweb/components/avatar.xml est passé sur base-300/base-content pour ne
+     plus dépendre de "neutral" du tout (son propre style de cercle sombre
+     ne doit pas changer selon ce que "neutral" représente ailleurs). */
+  --color-neutral: #9198a1;
+  --color-neutral-content: #0d1117;
+  --color-info: #00c896;
+  --color-info-content: #06120e;
+  --color-success: #3fb950;
+  --color-success-content: #ffffff;
+  --color-warning: #d29922;
+  --color-warning-content: #1f1300;
+  --color-error: #f85149;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f6f8fa;
+  --color-base-300: #d0d7de;
+  --color-base-content: #1f2328;
+  --color-primary: #009e78;
+  --color-primary-content: #06120e;
+  --color-secondary: #59636e;
+  --color-secondary-content: #ffffff;
+  --color-accent: #14b892;
+  --color-accent-content: #06120e;
+  --color-neutral: #59636e;
+  --color-neutral-content: #ffffff;
+  --color-info: #009e78;
+  --color-info-content: #06120e;
+  --color-success: #1a7f37;
+  --color-success-content: #ffffff;
+  --color-warning: #9a6700;
+  --color-warning-content: #ffffff;
+  --color-error: #cf222e;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.375rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Les templates sont des .xml, pas une extension que le scanner de
+   contenu automatique de Tailwind v4 reconnaît forcément par défaut —
+   explicite plutôt que de compter sur l'heuristique (docs/theming.md#build). */
+@source "../xweb/components/**/*.xml";
+@source "../plugins/**/*.xml";
+
+/* Sécurité anti-scan — classes DaisyUI composées à l'exécution (Python,
+   t-attf-class/t-value dans les composants : xweb.button, xweb.badge,
+   xweb.alert, xweb.toggle, xweb.radio, xweb.range, xweb.select,
+   xweb.textarea, xweb.spinner, xweb.stat, xweb.tabs, xweb.menu, xweb.kbd,
+   xweb.dropdown, xweb.table…). Le scanner de contenu de Tailwind v4 lit le
+   texte SOURCE des .xml, jamais le résultat d'une interpolation
+   ("btn-{{variant}}", ou 'text-'+color côté Python) — une classe qui
+   n'apparaît nulle part sous sa forme littérale complète n'est tout
+   simplement jamais générée (constaté : toggle-primary/select-md/
+   textarea-md/range-primary manquaient de app.css alors que d'autres
+   couleurs identiques passaient par accident, via une occurrence littérale
+   ailleurs). `@source inline()` force la génération de tout le produit
+   couleurs × tailles pour chaque composant concerné, indépendamment de ce
+   qu'un plugin appelant passe réellement comme prop — la seule façon de
+   garder `t-attf-class="btn btn-{{variant}}"` (docs/components.md : ne pas
+   réimplémenter les dictionnaires de variantes, DaisyUI les fournit) sans
+   deviner à l'avance toutes les valeurs qu'un plugin utilisera. */
+@source inline("{btn,badge,alert,radio,toggle,range,select,textarea,input,loading,tabs,menu,kbd,table}-{primary,secondary,accent,neutral,info,success,warning,error}");
+@source inline("{btn,badge,input,select,textarea,radio,toggle,range,loading,tabs,menu,kbd,table}-{xs,sm,md,lg,xl}");
+@source inline("text-{primary,secondary,accent,neutral,info,success,warning,error,white,current}");
+@source inline("tabs-{border,box,lift}");
+@source inline("dropdown-{top,bottom,left,right,center,start,end}");
+
+/* Icônes qui ne s'affichent que dans un thème (xweb.theme_toggle,
+   xweb/components/layout.xml) — DaisyUI thème via data-theme sur <html>
+   (docs/theming.md), pas de classe .dark : un simple sélecteur d'attribut
+   suffit, aucune variante Tailwind avec `&` (qu'il faudrait écrire &amp;
+   dans du XML, invisible au scanner de classes). */
+@layer components {
+  .theme-dark-only {
+    display: none;
+  }
+
+  [data-theme="dark"] .theme-dark-only {
+    display: inline-block;
+  }
+
+  [data-theme="dark"] .theme-light-only {
+    display: none;
+  }
+
+  /* xweb.popover (xweb/components/popover.xml) — masqué par défaut,
+     affiché en ajoutant .popover-open (_hyperscript). Pas de classe
+     Tailwind "hidden"/toggle : la classe .popover-open doit gagner sur
+     .popover-panel elle-même, une histoire de spécificité CSS qu'un
+     couple de classes utilitaires seules ne résout pas proprement. */
+  .popover-panel {
+    display: none;
+  }
+
+  .popover-panel.popover-open {
+    display: block;
+  }
+
+  /* xweb.sidebar_toggle (xweb/components/layout.xml) — repli desktop de
+     #xweb-sidebar en rail d'icônes. data-sidebar sur <html>, même mécanique
+     que data-theme (persisté en localStorage, relu par le script
+     anti-flash AVANT le premier rendu — docs/shell.md).
+     #xweb-sidebar (id) l'emporte sur .w-60 (classe Tailwind posée dans
+     shell.xml) par spécificité CSS normale, jamais besoin de !important. */
+  [data-sidebar="collapsed"] #xweb-sidebar {
+    width: 4rem;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-label {
+    display: none;
+  }
+
+  .sidebar-collapsed-only {
+    display: none;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-collapsed-only {
+    display: inline-block;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-expanded-only {
+    display: none;
+  }
+}

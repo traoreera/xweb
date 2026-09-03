@@ -1,0 +1,8 @@
+<template t-name="xweb.spinner">
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="color" t-default="'accent'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="color_class" t-value="'text-white' if color == 'white' else ('text-current' if color == 'current' else 'text-'+color)"/>
+    <span role="status" aria-label="Loading"
+          t-attf-class="loading loading-spinner loading-{{size}} {{color_class}} {{extra_class}}"/>
+</template>

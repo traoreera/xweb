@@ -1,0 +1,5 @@
+<template t-name="xweb.kbd">
+    <t t-set="size" t-default="'sm'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <kbd t-attf-class="kbd kbd-{{size}} {{extra_class}}"><t t-out="slot"/></kbd>
+</template>

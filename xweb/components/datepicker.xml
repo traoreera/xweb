@@ -1,0 +1,36 @@
+<!--
+    xweb.datepicker — input + xweb.calendar dans un panneau à la xweb.
+    popover (même mécanique clic-extérieur/Escape, xweb/components/
+    popover.xml). Écoute `calendar:select` émis par xweb.calendar
+    (xweb/components/calendar.xml) pour poser la date choisie et refermer.
+
+    Props `month_label`/`weeks` : la grille du mois affiché, calculée par
+    l'appelant via xweb/calendar.py::month_grid() — ce composant ne fait
+    aucune arithmétique de date lui-même (aucun builtin dans les
+    expressions QWeb, CLAUDE.md).
+-->
+<template t-name="xweb.datepicker">
+    <t t-set="id" t-default="'xweb-datepicker'"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="value_label" t-default="''"/>
+    <t t-set="month_label" t-default="''"/>
+    <t t-set="weeks" t-default="[]"/>
+    <t t-set="placeholder" t-default="'Choisir une date…'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="relative inline-block {{extra_class}}">
+        <input type="hidden" t-att-name="name" t-attf-id="{{id}}-value" t-att-value="value"/>
+        <input type="text" readonly="readonly" t-attf-id="{{id}}-input" class="input input-bordered w-full cursor-pointer"
+               t-att-placeholder="placeholder" t-att-value="value_label or value"
+               t-attf-_="on click toggle .popover-open on #{{id}}-panel then halt the event"/>
+        <div t-attf-id="{{id}}-panel" class="popover-panel absolute top-full mt-2 z-40"
+             t-attf-_="on click from elsewhere remove .popover-open from me
+                       on keyup[key=='Escape'] from the document remove .popover-open from me
+                       on calendar:select from #{{id}}-calendar
+                          set document.getElementById('{{id}}-value').value to event.detail.iso
+                          set document.getElementById('{{id}}-input').value to event.detail.iso
+                          remove .popover-open from me">
+            <t t-call="xweb.calendar" t-att-id="id + '-calendar'" t-att-month_label="month_label" t-att-weeks="weeks"/>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,22 @@
+<!-- options : liste de dicts {value, label} (ou de couples (value, label)). -->
+<template t-name="xweb.select">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="options" t-default="[]"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="placeholder" t-default="''"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="required" t-default="False"/>
+    <t t-set="invalid" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <select t-att-name="name or None" t-att-id="id or None" t-att-disabled="disabled" t-att-required="required"
+            t-attf-class="select w-full select-{{size}} {{ 'select-error' if invalid else '' }} {{extra_class}}">
+        <t t-if="placeholder"><option value="" disabled="disabled" t-att-selected="not value"><t t-esc="placeholder"/></option></t>
+        <t t-foreach="options" t-as="opt">
+            <t t-set="opt_value" t-value="opt['value'] if 'value' in opt else opt[0]"/>
+            <t t-set="opt_label" t-value="opt['label'] if 'label' in opt else opt[1]"/>
+            <option t-att-value="opt_value" t-att-selected="value != '' and ('%s' % opt_value) == ('%s' % value)"><t t-esc="opt_label"/></option>
+        </t>
+    </select>
+</template>

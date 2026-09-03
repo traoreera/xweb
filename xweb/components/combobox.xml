@@ -1,0 +1,43 @@
+<!--
+    xweb.combobox — input filtrable + liste d'options (DaisyUI dropdown +
+    _hyperscript), même idiome de filtrage que plugins/account/templates/
+    organization_roles.xml (déjà vérifié). Deux champs distincts :
+      - un input caché (`name`, la vraie valeur soumise avec le formulaire) ;
+      - un input texte visible (jamais soumis, name="", sert juste à
+        filtrer et afficher le libellé choisi).
+
+    La valeur d'une option (opt['value']) vient d'un attribut data- lu via
+    `my.dataset.value` au clic — jamais interpolée en dur dans le script
+    _hyperscript (comme `#{{id}}` l'est, ci-dessous, pour l'id du composant
+    lui-même) : `id` est choisi par l'auteur du template, opt['value'] peut
+    être une donnée quelconque (venant d'une base, potentiellement avec des
+    apostrophes) — l'interpoler en dur casserait le parsing _hyperscript
+    et/ou permettrait d'injecter du script. Vérifié en direct (jsdom).
+-->
+<template t-name="xweb.combobox">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="'xweb-combobox'"/>
+    <t t-set="options" t-default="[]"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="placeholder" t-default="'Rechercher…'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="dropdown w-full {{extra_class}}">
+        <input type="hidden" t-att-name="name" t-att-id="id" t-att-value="value"/>
+        <input type="text" tabindex="0" t-attf-id="{{id}}-input" class="input input-bordered w-full"
+               t-att-placeholder="placeholder" t-att-value="value" autocomplete="off"
+               t-attf-_="on input show &lt;.combobox-option/&gt; in #{{id}}-list when its textContent.toLowerCase() contains my value.toLowerCase()"/>
+        <ul t-attf-id="{{id}}-list" tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-full max-h-64 overflow-y-auto p-2 shadow-lg border border-base-300">
+            <t t-if="not options"><li class="opacity-60 px-3 py-2 text-sm">Aucune option.</li></t>
+            <t t-foreach="options" t-as="opt">
+                <li class="combobox-option">
+                    <a t-att-data-value="opt['value']"
+                       t-attf-_="on click
+                                    set document.getElementById('{{id}}').value to my dataset.value
+                                    set document.getElementById('{{id}}-input').value to my textContent">
+                        <t t-esc="opt['label']"/>
+                    </a>
+                </li>
+            </t>
+        </ul>
+    </div>
+</template>

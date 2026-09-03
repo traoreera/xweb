@@ -1,0 +1,36 @@
+<!--
+    xweb.modal : <dialog> natif + classes DaisyUI. Ouverture via
+    xweb.modal_trigger (_hyperscript, `call #id.showModal()`) ; fermeture par
+    les <form method="dialog"> natifs — hx-boost="false" dessus, sinon htmx
+    intercepterait la soumission.
+-->
+<templates>
+<template t-name="xweb.modal">
+    <t t-set="id" t-default="'xweb-modal'"/>
+    <t t-set="title" t-default="''"/>
+    <t t-set="actions" t-default="''"/>
+    <t t-set="close_label" t-default="'Fermer'"/>
+    <t t-set="size" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <dialog t-att-id="id" t-attf-class="modal {{extra_class}}">
+        <div t-attf-class="modal-box {{size}}">
+            <form method="dialog" hx-boost="false">
+                <button type="submit" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Fermer">✕</button>
+            </form>
+            <t t-if="title"><h3 class="text-lg font-semibold mb-3"><t t-esc="title"/></h3></t>
+            <div><t t-out="slot"/></div>
+            <div class="modal-action">
+                <t t-if="actions"><t t-out="actions"/></t>
+                <form method="dialog" hx-boost="false"><button type="submit" class="btn"><t t-esc="close_label"/></button></form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" hx-boost="false"><button type="submit">fermer</button></form>
+    </dialog>
+</template>
+
+<template t-name="xweb.modal_trigger">
+    <t t-set="target" t-default="'xweb-modal'"/>
+    <t t-set="extra_class" t-default="'btn'"/>
+    <button type="button" t-attf-class="{{extra_class}}" t-attf-_="on click call #{{target}}.showModal()"><t t-out="slot"/></button>
+</template>
+</templates>

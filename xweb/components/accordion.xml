@@ -1,0 +1,23 @@
+<!--
+    xweb.accordion — plusieurs panneaux <details> mutuellement exclusifs
+    via l'attribut `name` natif de <details> (groupement natif du
+    navigateur, sans JS — support Baseline 2023). Contenu de chaque panneau
+    en texte simple (t-esc, `item['content']`) — pour du HTML riche par
+    panneau, composer directement xweb.collapse un par un plutôt que
+    passer par `items` (même limite que xweb.table/tabs : les props
+    data-driven acceptent des dicts, pas du HTML arbitraire imbriqué).
+-->
+<template t-name="xweb.accordion">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="name" t-default="'xweb-accordion'"/>
+    <t t-set="variant" t-default="'arrow'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="flex flex-col gap-2 {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <details t-attf-class="collapse {{ 'collapse-' + variant if variant else '' }} bg-base-100 border border-base-300" t-att-name="name" t-att-open="item.get('open') or None">
+                <summary class="collapse-title font-semibold"><t t-esc="item['title']"/></summary>
+                <div class="collapse-content text-sm"><t t-esc="item.get('content', '')"/></div>
+            </details>
+        </t>
+    </div>
+</template>

@@ -1,0 +1,257 @@
+<!--
+    Le shell (docs/shell.md) — layout persistant façon Obsidian :
+
+        ┌──────┬──────────┬────────────────────────────────┐
+        │ribbon│ sidebar  │  topbar (titre, palette, thème, compte)
+        │      │ (nav)    │  #xweb-content (t-out="content")
+        │      │          │  status bar
+        └──────┴──────────┴────────────────────────────────┘
+        + palette de commandes (Ctrl+K), + zone de toasts.
+
+    Tout vient du contexte injecté par xweb/mount.py::_base_render_context :
+    nav_tree / ribbon / commands / status_left / status_right (registres de
+    xweb/contrib.py), user / account (AuthPayload résolu), csrf_token,
+    login_url / account_path / logout_path.
+
+    hx-boost sur <body> : chaque lien interne devient une requête htmx qui
+    ne remplace que #xweb-content (render_xweb_template renvoie le fragment
+    quand HX-Request est présent). Les liens qui SORTENT du shell (login,
+    logout) portent hx-boost="false" — une vraie navigation, parce que la
+    page cible pose des cookies ou n'a pas de shell.
+
+    Aucun JS écrit à la main hormis le script anti-flash de xweb.shell_head :
+    tout le comportement est _hyperscript, vérifié contre le vrai
+    _hyperscript.min.js dans scripts/verify-hyperscript.mjs.
+-->
+<templates>
+
+<template t-name="xweb.shell">
+<html>
+<head><t t-call="xweb.shell_head" t-att-page_title="page_title"/></head>
+<body class="min-h-screen bg-base-200 text-base-content"
+      hx-boost="true" hx-target="#xweb-content" hx-swap="innerHTML show:window:top" hx-indicator="#xweb-loading">
+<div id="xweb-shell" class="drawer lg:drawer-open">
+    <input id="xweb-drawer" type="checkbox" class="drawer-toggle"/>
+
+    <!-- ── colonne principale : topbar / contenu / status bar ───────────── -->
+    <div class="drawer-content flex flex-col min-h-screen min-w-0">
+        <header id="xweb-topbar" class="navbar sticky top-0 z-30 min-h-12 h-12 px-2 lg:px-4 gap-1 bg-base-100 border-b border-base-300">
+            <a href="/" class="btn btn-ghost btn-square btn-sm text-primary font-bold text-base" t-att-title="app_name">
+                <t t-esc="app_name[:1].upper()"/>
+            </a>
+            <label for="xweb-drawer" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="Ouvrir le menu">
+                <t t-call="xweb.icon" name="menu"/>
+            </label>
+            <t t-call="xweb.sidebar_toggle"/>
+            <div class="flex-1 min-w-0 px-1">
+                <span id="xweb-page-title" class="font-medium truncate"><t t-esc="page_title"/></span>
+            </div>
+
+            <button type="button" class="btn btn-ghost btn-sm gap-2 hidden sm:inline-flex font-normal"
+                    title="Palette de commandes (Ctrl+K)"
+                    _="on click add .modal-open to #command-palette then call #cmd-input.focus()">
+                <t t-call="xweb.icon" name="search" extra_class="size-4 opacity-70"/>
+                <span class="opacity-60 text-xs">Rechercher…</span>
+                <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">K</kbd>
+            </button>
+
+            <t t-call="xweb.locale_switcher" t-att-locale="locale" t-att-locales="locales" t-att-request="request"/>
+            <t t-call="xweb.theme_toggle"/>
+
+            <t t-if="user">
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2 px-2" t-att-title="account['label']">
+                        <t t-call="xweb.avatar" t-att-initial="account['initial']" size="xs"/>
+                        <span class="hidden md:inline max-w-40 truncate font-normal"><t t-esc="account['label']"/></span>
+                        <t t-call="xweb.icon" name="chevron_down" extra_class="size-4 opacity-60"/>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-60 p-2 shadow-lg border border-base-300">
+                        <li class="menu-title truncate"><t t-esc="account['email'] or account['label']"/></li>
+                        <li><a t-att-href="account_path"><t t-call="xweb.icon" name="user" extra_class="size-4"/>Mon compte</a></li>
+                        <li><a t-attf-href="{{account_path}}security"><t t-call="xweb.icon" name="shield" extra_class="size-4"/>Sécurité</a></li>
+                        <li><a t-attf-href="{{account_path}}sessions"><t t-call="xweb.icon" name="devices" extra_class="size-4"/>Sessions</a></li>
+                        <li class="border-t border-base-300 mt-1 pt-1">
+                            <form method="post" t-att-action="logout_path" hx-boost="false" class="p-0">
+                                <t t-call="xweb.csrf" t-att-token="csrf_token"/>
+                                <button type="submit" class="flex items-center gap-2 w-full text-left text-error px-4 py-2">
+                                    <t t-call="xweb.icon" name="logout" extra_class="size-4"/>Se déconnecter
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </t>
+            <t t-else="1">
+                <a t-att-href="login_url" hx-boost="false" class="btn btn-primary btn-sm gap-2">
+                    <t t-call="xweb.icon" name="login" extra_class="size-4"/>Se connecter
+                </a>
+            </t>
+        </header>
+
+        <div id="xweb-loading" class="htmx-indicator h-0.5 bg-primary"></div>
+
+        <main id="xweb-content" class="flex-1 p-4 lg:p-6 min-w-0"><t t-out="content"/></main>
+
+        <footer id="xweb-status" class="sticky bottom-0 z-30 flex items-center gap-4 h-7 px-3 text-xs bg-base-100 border-t border-base-300 text-base-content/70">
+            <t t-foreach="status_left" t-as="item">
+                <t t-call="xweb.status_item" t-att-item="item"/>
+            </t>
+            <span class="flex-1"></span>
+            <t t-foreach="status_right" t-as="item">
+                <t t-call="xweb.status_item" t-att-item="item"/>
+            </t>
+            <span class="htmx-indicator flex items-center gap-1"><span class="loading loading-spinner loading-xs"></span>chargement…</span>
+        </footer>
+    </div>
+
+    <!-- ── sidebar (drawer : fixe en desktop, tiroir en mobile) ──────────── -->
+    <div class="drawer-side z-30">
+        <label for="xweb-drawer" class="drawer-overlay" aria-label="Fermer le menu"></label>
+        <!-- Vrai bug trouvé sur une capture d'écran réelle (pas en lisant le
+             code) : hx-boost ne remplace QUE #xweb-content — la sidebar
+             n'est jamais renvoyée dans une réponse boostée (confirmé :
+             curl -H "HX-Request: true" .../components ne contient aucun
+             "xweb-sidebar"), donc son highlight .menu-active reste figé sur
+             la page du dernier chargement COMPLET. Naviguer de Démo vers
+             Composants via la sidebar laissait "Démo" allumé pour toujours.
+             Corrigé côté client, pas serveur : après CHAQUE règlement htmx
+             (boosted ou pas, htmx:afterSettle bulle jusqu'à body), recalcule
+             .menu-active sur chaque lien de LA sidebar elle-même en comparant
+             son href à location.pathname (déjà à jour, htmx gère l'historique
+             pour une navigation boostée) — jamais de round-trip serveur
+             supplémentaire pour ça. Vérifié en jsdom, plusieurs navigations
+             d'affilée. -->
+        <aside id="xweb-sidebar" class="flex flex-col w-60 min-h-full bg-base-100 border-r border-base-300"
+               _="on htmx:afterSettle from body
+                    for a in &lt;a/&gt; in me
+                      if a's @href is location.pathname
+                        add .menu-active .bg-primary .text-primary-content to a
+                      else
+                        remove .menu-active .bg-primary .text-primary-content from a
+                      end
+                    end">
+                <div class="h-12 flex items-center px-4 font-semibold border-b border-base-300 truncate">
+                    <span class="sidebar-label"><t t-esc="app_name"/></span>
+                </div>
+                <ul class="menu w-full flex-1 px-2 py-2 gap-0.5 overflow-y-auto">
+                    <t t-if="nav_tree">
+                        <t t-call="xweb.nav_items" t-att-nodes="nav_tree" t-att-current_path="current_path"/>
+                    </t>
+                    <t t-else="1">
+                        <li class="px-2 py-3 text-xs opacity-60">Aucun plugin n'a encore contribué de navigation.</li>
+                    </t>
+                </ul>
+                <!-- Anonyme : rien ici — le CTA "Se connecter" de la topbar
+                     (btn-primary, en haut à droite) suffit déjà, un deuxième
+                     bouton "Se connecter" dupliqué en bas de sidebar
+                     (btn-outline) n'ajoutait rien, juste du bruit visuel
+                     (repéré sur une capture d'écran réelle du shell). -->
+                <t t-if="user">
+                    <div class="border-t border-base-300 p-2">
+                        <a t-att-href="account_path" class="flex items-center gap-2 rounded-box px-2 py-1.5 hover:bg-base-200">
+                            <t t-call="xweb.avatar" t-att-initial="account['initial']" size="xs"/>
+                            <span class="sidebar-label min-w-0 flex-1">
+                                <span class="block truncate text-sm"><t t-esc="account['label']"/></span>
+                                <t t-if="account['email'] and account['email'] != account['label']">
+                                    <span class="block truncate text-xs opacity-60"><t t-esc="account['email']"/></span>
+                                </t>
+                            </span>
+                        </a>
+                    </div>
+                </t>
+        </aside>
+    </div>
+</div>
+
+<!-- ── palette de commandes (CommandRegistry) ─────────────────────────── -->
+<div id="command-palette" class="modal modal-top sm:modal-middle" role="dialog" aria-label="Palette de commandes"
+     _="on keydown[key=='k' and ctrlKey] from window halt the event then toggle .modal-open on me then call #cmd-input.focus()
+        on keydown[key=='Escape'] from window remove .modal-open from me">
+    <div class="modal-box p-0 max-w-lg overflow-hidden">
+        <label class="flex items-center gap-2 px-4 h-12 border-b border-base-300">
+            <t t-call="xweb.icon" name="search" extra_class="size-5 opacity-60"/>
+            <input id="cmd-input" type="text" class="grow bg-transparent outline-none" placeholder="Tapez une commande…" autocomplete="off"
+                   _="on input show &lt;li/&gt; in #cmd-list when its textContent.toLowerCase() contains my value.toLowerCase()"/>
+            <kbd class="kbd kbd-sm">Esc</kbd>
+        </label>
+        <ul id="cmd-list" class="menu w-full max-h-80 overflow-y-auto p-2">
+            <t t-foreach="commands" t-as="cmd">
+                <li>
+                    <a t-att-href="cmd.href" class="flex items-center gap-3" _="on click remove .modal-open from #command-palette">
+                        <t t-if="cmd.icon"><t t-call="xweb.icon" t-att-name="cmd.icon" extra_class="size-4 opacity-70"/></t>
+                        <span class="flex-1"><t t-esc="cmd.label"/></span>
+                        <t t-if="cmd.hotkey"><kbd class="kbd kbd-xs"><t t-esc="cmd.hotkey"/></kbd></t>
+                    </a>
+                </li>
+            </t>
+            <t t-if="not commands"><li class="px-2 py-3 text-xs opacity-60">Aucune commande enregistrée.</li></t>
+        </ul>
+    </div>
+    <div class="modal-backdrop" _="on click remove .modal-open from #command-palette"></div>
+</div>
+
+<div id="xweb-toasts" class="toast toast-end toast-bottom z-50"></div>
+</body>
+</html>
+</template>
+
+<!-- Arbre de navigation (NavRegistry.tree) — récursif via t-call sur lui-même. -->
+<template t-name="xweb.nav_items">
+    <t t-set="current_path" t-default="''"/>
+    <t t-foreach="nodes" t-as="node">
+        <li>
+            <t t-if="node['children']">
+                <details open="open">
+                    <summary class="flex items-center gap-2">
+                        <t t-if="node['icon']"><t t-call="xweb.icon" t-att-name="node['icon']" extra_class="size-4 opacity-70"/></t>
+                        <span class="sidebar-label flex-1"><t t-esc="node['label']"/></span>
+                        <t t-if="node['badge']"><span class="sidebar-label badge badge-sm badge-neutral"><t t-esc="node['badge']"/></span></t>
+                    </summary>
+                    <ul><t t-call="xweb.nav_items" t-att-nodes="node['children']" t-att-current_path="current_path"/></ul>
+                </details>
+            </t>
+            <t t-elif="node['path']">
+                <!-- Égalité stricte, jamais startswith() : chaque node['path']
+                     enregistré (nav.register, plugins/*/src/main.py) est une
+                     feuille, jamais un vrai ancêtre d'une autre — un
+                     startswith() faisait matcher /plugins/demo/ (Démo) ET
+                     /plugins/demo/kanban (Kanban) simultanément dès que
+                     current_path valait ce dernier (Démo se termine par "/",
+                     préfixe involontaire de TOUTE page sœur). Repéré sur une
+                     capture d'écran réelle du shell, pas en lisant le code. -->
+                <!-- data-nav-id : ancre stable pour un badge DYNAMIQUE posé
+                     côté client (ex. compteur de notifications non lues via
+                     xpulse — voir shell.xml plus bas) — node['badge'] reste
+                     le seul mécanisme STATIQUE (NavRegistry est un singleton
+                     partagé, résolu une fois, docs/shell.md "badge") ; les
+                     deux coexistent sans se marcher dessus (id de nav
+                     différent du markup du badge lui-même). -->
+                <a t-att-href="node['path']" t-attf-data-nav-id="{{node['id']}}" t-attf-class="flex items-center gap-2 {{ 'menu-active bg-primary text-primary-content' if node['path'] == current_path else '' }}">
+                    <t t-if="node['icon']"><t t-call="xweb.icon" t-att-name="node['icon']" extra_class="size-4 opacity-70"/></t>
+                    <span class="sidebar-label flex-1"><t t-esc="node['label']"/></span>
+                    <t t-if="node['badge']"><span class="sidebar-label badge badge-sm badge-neutral"><t t-esc="node['badge']"/></span></t>
+                    <span class="nav-live-badge badge badge-sm badge-primary" hidden="hidden"></span>
+                </a>
+            </t>
+            <t t-else="1"><span class="menu-title"><t t-esc="node['label']"/></span></t>
+        </li>
+    </t>
+</template>
+
+<!-- Un élément de status bar (StatusBarRegistry) — lien si href, texte sinon. -->
+<template t-name="xweb.status_item">
+    <t t-if="item.href">
+        <a t-att-href="item.href" t-att-title="item.title" class="flex items-center gap-1 hover:text-base-content">
+            <t t-if="item.icon"><t t-call="xweb.icon" t-att-name="item.icon" extra_class="size-3.5"/></t>
+            <t t-esc="item.label"/>
+        </a>
+    </t>
+    <t t-else="1">
+        <span t-att-title="item.title" class="flex items-center gap-1">
+            <t t-if="item.icon"><t t-call="xweb.icon" t-att-name="item.icon" extra_class="size-3.5"/></t>
+            <t t-esc="item.label"/>
+        </span>
+    </t>
+</template>
+
+</templates>

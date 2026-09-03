@@ -1,0 +1,45 @@
+<!--
+    xweb.calendar — grille d'un mois (docs/components.md, xweb/calendar.py
+    ::month_grid()). La grille elle-même est calculée côté Python — aucun
+    builtin date dans les expressions QWeb (CLAUDE.md).
+
+    Cliquer un jour envoie `calendar:select(iso: '...')` sur l'élément
+    racine (id), jamais un t-call direct vers un appelant particulier : ce
+    composant ne sait rien de qui l'utilise (affichage seul, ou dans un
+    xweb.datepicker qui écoute cet événement — xweb/components/
+    datepicker.xml). `prev_url`/`next_url` sont de simples liens (navigation
+    normale ou hx-boost/htmx si l'appelant les configure ainsi) — ce
+    composant ne fait aucune arithmétique de mois lui-même.
+-->
+<template t-name="xweb.calendar">
+    <t t-set="id" t-default="'xweb-calendar'"/>
+    <t t-set="month_label" t-default="''"/>
+    <t t-set="weeks" t-default="[]"/>
+    <t t-set="prev_url" t-default="''"/>
+    <t t-set="next_url" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-att-id="id" t-attf-class="xweb-calendar bg-base-100 border border-base-300 rounded-box p-3 w-72 {{extra_class}}">
+        <div class="flex items-center justify-between mb-2">
+            <t t-if="prev_url"><a t-att-href="prev_url" class="btn btn-ghost btn-xs"><t t-call="xweb.icon" name="chevron_left" extra_class="size-4"/></a></t>
+            <t t-else="1"><span class="btn btn-ghost btn-xs btn-disabled"><t t-call="xweb.icon" name="chevron_left" extra_class="size-4"/></span></t>
+            <span class="font-semibold text-sm"><t t-esc="month_label"/></span>
+            <t t-if="next_url"><a t-att-href="next_url" class="btn btn-ghost btn-xs"><t t-call="xweb.icon" name="chevron_right" extra_class="size-4"/></a></t>
+            <t t-else="1"><span class="btn btn-ghost btn-xs btn-disabled"><t t-call="xweb.icon" name="chevron_right" extra_class="size-4"/></span></t>
+        </div>
+        <div class="grid grid-cols-7 gap-1 text-center text-xs opacity-60 mb-1">
+            <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+            <t t-foreach="weeks" t-as="week">
+                <t t-foreach="week" t-as="cell">
+                    <button type="button"
+                            t-attf-class="btn btn-xs {{ 'btn-primary' if cell['is_selected'] else ('btn-outline' if cell['is_today'] else 'btn-ghost') }} {{ '' if cell['in_month'] else 'opacity-30' }}"
+                            t-att-data-iso="cell['iso']"
+                            t-attf-_="on click send calendar:select(iso: my.dataset.iso) to #{{id}}">
+                        <t t-esc="cell['day']"/>
+                    </button>
+                </t>
+            </t>
+        </div>
+    </div>
+</template>

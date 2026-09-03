@@ -1,0 +1,33 @@
+<!--
+    xweb.popover — contenu riche déclenché par CLIC (contrairement à
+    xweb.tooltip, simple survol ; contrairement à xweb.dropdown, focus/
+    tabindex CSS-only sans état persistant). Ouvre/ferme en _hyperscript,
+    se ferme sur clic extérieur ET Escape (`.popover-panel`/`.popover-open`
+    stylées dans assets/app.css — pas une classe Tailwind toggle seule,
+    une histoire de spécificité CSS).
+
+    Piège réel trouvé en l'écrivant : sans `then halt the event` sur le
+    déclencheur, le MÊME clic qui ouvre le popover est vu comme "elsewhere"
+    par le panneau lui-même (l'event bulle jusqu'au document APRÈS avoir
+    ouvert le panneau) et le referme aussitôt — testé, confirmé planter
+    sans le halt, corrigé avec. Vérifié dans scripts/verify-hyperscript.mjs.
+-->
+<template t-name="xweb.popover">
+    <t t-set="id" t-default="'xweb-popover'"/>
+    <t t-set="trigger_label" t-default="'Options'"/>
+    <t t-set="trigger_class" t-default="'btn btn-sm'"/>
+    <t t-set="position" t-default="'bottom'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div class="relative inline-block">
+        <button type="button" t-attf-class="{{trigger_class}}"
+                t-attf-_="on click toggle .popover-open on #{{id}}-panel then halt the event">
+            <t t-esc="trigger_label"/>
+        </button>
+        <div t-attf-id="{{id}}-panel"
+             t-attf-class="popover-panel dropdown-content menu bg-base-100 rounded-box z-40 w-64 p-3 shadow-lg border border-base-300 absolute {{ 'top-full mt-2' if position == 'bottom' else 'bottom-full mb-2' }} {{extra_class}}"
+             _="on click from elsewhere remove .popover-open from me
+                on keyup[key=='Escape'] from the document remove .popover-open from me">
+            <t t-out="slot"/>
+        </div>
+    </div>
+</template>

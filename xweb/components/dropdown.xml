@@ -1,0 +1,23 @@
+<!-- Menu déroulant DaisyUI (focus/tabindex, aucun JS). Le slot contient des <li><a>…</a></li>. -->
+<template t-name="xweb.dropdown">
+    <t t-set="label" t-default="''"/>
+    <t t-set="trigger" t-default="''"/>
+    <t t-set="align" t-default="'start'"/>
+    <t t-set="position" t-default="'bottom'"/>
+    <t t-set="hover" t-default="False"/>
+    <t t-set="button_class" t-default="'btn btn-sm'"/>
+    <t t-set="width" t-default="'w-52'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="dropdown dropdown-{{position}} dropdown-{{align}} {{ 'dropdown-hover' if hover else '' }} {{extra_class}}">
+        <div tabindex="0" role="button" t-attf-class="{{ '' if trigger else button_class + ' gap-1' }}">
+            <t t-if="trigger"><t t-out="trigger"/></t>
+            <t t-else="1">
+                <t t-esc="label"/>
+                <t t-call="xweb.icon" name="chevron_down" extra_class="size-4 opacity-60"/>
+            </t>
+        </div>
+        <ul tabindex="0" t-attf-class="dropdown-content menu bg-base-100 rounded-box z-40 {{width}} p-2 shadow-lg border border-base-300">
+            <t t-out="slot"/>
+        </ul>
+    </div>
+</template>

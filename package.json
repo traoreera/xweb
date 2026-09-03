@@ -1,0 +1,18 @@
+{
+  "name": "xweb-scripts",
+  "private": true,
+  "description": "Outillage de dev — build CSS (DaisyUI/Tailwind) + vérification JS (htmx/_hyperscript). Node est un outil de dev, jamais une dépendance d'exécution de xweb (docs/theming.md#build).",
+  "type": "module",
+  "scripts": {
+    "verify:hyperscript": "node scripts/verify-hyperscript.mjs",
+    "verify:demo": "node scripts/verify-demo-page.mjs",
+    "build:css": "tailwindcss -i assets/app.css -o xweb/static/app.css --minify",
+    "watch:css": "tailwindcss -i assets/app.css -o xweb/static/app.css --watch"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.0",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/cli": "^4.3.3",
+    "daisyui": "^5.7.27"
+  }
+}

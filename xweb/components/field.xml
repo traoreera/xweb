@@ -1,0 +1,20 @@
+<!-- Enveloppe de champ : libellé, contrôle (slot), erreur OU aide. -->
+<template t-name="xweb.field">
+    <t t-set="label" t-default="''"/>
+    <t t-set="for_" t-default="''"/>
+    <t t-set="error" t-default="''"/>
+    <t t-set="help" t-default="''"/>
+    <t t-set="required" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <fieldset t-attf-class="fieldset p-0 {{extra_class}}">
+        <t t-if="label">
+            <label t-att-for="for_ or None" class="fieldset-legend text-sm">
+                <t t-esc="label"/>
+                <t t-if="required"><span class="text-error" aria-hidden="true">*</span></t>
+            </label>
+        </t>
+        <t t-out="slot"/>
+        <t t-if="error"><t t-call="xweb.error"><t t-esc="error"/></t></t>
+        <t t-elif="help"><t t-call="xweb.description"><t t-esc="help"/></t></t>
+    </fieldset>
+</template>

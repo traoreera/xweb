@@ -1,0 +1,11 @@
+<template t-name="xweb.avatar_group">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="size" t-default="'sm'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="avatar-group -space-x-4 {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <t t-call="xweb.avatar" t-att-initial="item.get('initial', '')" t-att-src="item.get('src', '')" t-att-alt="item.get('alt', '')" t-att-size="size"/>
+        </t>
+        <t t-out="slot"/>
+    </div>
+</template>

@@ -1,0 +1,46 @@
+<!--
+    xweb.drawer — panneau hors-écran DaisyUI, piloté par une checkbox
+    cachée (zéro JS, comme xweb.dropdown). xweb.drawer_toggle est le
+    <label> qui l'ouvre/ferme (même découpage déclencheur/contenu que
+    xweb.modal/xweb.modal_trigger — le contenu du panneau (`side_items`)
+    est data-driven, comme xweb.menu ; pour un panneau au contenu libre,
+    composer sa propre structure autour de la même checkbox `id`.
+-->
+<templates>
+
+<template t-name="xweb.drawer">
+    <t t-set="id" t-default="'xweb-drawer'"/>
+    <t t-set="side_items" t-default="[]"/>
+    <t t-set="side_end" t-default="False"/>
+    <t t-set="width" t-default="'w-72'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="drawer {{ 'drawer-end' if side_end else '' }} {{extra_class}}">
+        <input t-att-id="id" type="checkbox" class="drawer-toggle"/>
+        <div class="drawer-content">
+            <t t-out="slot"/>
+        </div>
+        <div class="drawer-side z-50">
+            <label t-att-for="id" aria-label="Fermer le panneau" class="drawer-overlay"></label>
+            <ul t-attf-class="menu bg-base-200 min-h-full {{width}} p-4 gap-1">
+                <t t-foreach="side_items" t-as="item">
+                    <li>
+                        <a t-att-href="item.get('href')">
+                            <t t-if="item.get('icon')"><t t-call="xweb.icon" t-att-name="item['icon']" extra_class="size-4"/></t>
+                            <t t-esc="item['label']"/>
+                        </a>
+                    </li>
+                </t>
+            </ul>
+        </div>
+    </div>
+</template>
+
+<template t-name="xweb.drawer_toggle">
+    <t t-set="target" t-default="'xweb-drawer'"/>
+    <t t-set="extra_class" t-default="'btn btn-square btn-ghost'"/>
+    <label t-att-for="target" t-attf-class="{{extra_class}}" aria-label="Ouvrir le panneau">
+        <t t-call="xweb.icon" name="menu" extra_class="size-5"/>
+    </label>
+</template>
+
+</templates>

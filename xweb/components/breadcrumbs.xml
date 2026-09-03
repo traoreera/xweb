@@ -1,0 +1,24 @@
+<template t-name="xweb.breadcrumbs">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="breadcrumbs text-sm {{extra_class}}">
+        <ul>
+            <t t-foreach="items" t-as="crumb">
+                <li>
+                    <t t-if="crumb.get('href') and not crumb_last">
+                        <a t-att-href="crumb['href']" class="flex items-center gap-1">
+                            <t t-if="crumb.get('icon')"><t t-call="xweb.icon" t-att-name="crumb['icon']" extra_class="size-4"/></t>
+                            <t t-esc="crumb['label']"/>
+                        </a>
+                    </t>
+                    <t t-else="1">
+                        <span class="flex items-center gap-1 opacity-80">
+                            <t t-if="crumb.get('icon')"><t t-call="xweb.icon" t-att-name="crumb['icon']" extra_class="size-4"/></t>
+                            <t t-esc="crumb['label']"/>
+                        </span>
+                    </t>
+                </li>
+            </t>
+        </ul>
+    </div>
+</template>

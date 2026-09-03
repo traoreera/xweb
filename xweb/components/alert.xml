@@ -1,0 +1,16 @@
+<template t-name="xweb.alert">
+    <t t-set="variant" t-default="'info'"/>
+    <t t-set="title" t-default="''"/>
+    <t t-set="dismissible" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div role="alert" t-attf-class="alert alert-{{variant}} {{extra_class}}">
+        <div class="flex-1 min-w-0">
+            <t t-if="title"><div class="font-semibold"><t t-esc="title"/></div></t>
+            <div t-attf-class="text-sm {{ 'mt-1' if title else '' }}"><t t-out="slot"/></div>
+        </div>
+        <t t-if="dismissible">
+            <button type="button" aria-label="Dismiss" class="shrink-0 opacity-70 hover:opacity-100 transition-opacity"
+                    _="on click remove closest .alert">&#215;</button>
+        </t>
+    </div>
+</template>

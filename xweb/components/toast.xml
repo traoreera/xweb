@@ -1,0 +1,24 @@
+<!--
+    xweb.toast — notification éphémère. timeout en secondes (0 = reste).
+    Auto-suppression en _hyperscript (`init wait Ns then remove me`).
+    xweb.toasts_oob — enveloppe hx-swap-oob pour qu'une route htmx ajoute un
+    toast dans #xweb-toasts (shell.xml) en plus de sa réponse principale.
+-->
+<templates>
+<template t-name="xweb.toast">
+    <t t-set="variant" t-default="'info'"/>
+    <t t-set="timeout" t-default="5"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="icon_name" t-value="{'info': 'info', 'success': 'check_circle', 'warning': 'warning', 'error': 'error'}.get(variant, 'info')"/>
+    <div role="status" t-attf-class="alert alert-{{variant}} shadow-lg {{extra_class}}"
+         t-att-_="('init wait %ss then remove me' % timeout) if timeout else None">
+        <t t-call="xweb.icon" t-att-name="icon_name" extra_class="size-5"/>
+        <span><t t-out="slot"/></span>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Fermer" _="on click remove closest .alert">✕</button>
+    </div>
+</template>
+
+<template t-name="xweb.toasts_oob">
+    <div id="xweb-toasts" hx-swap-oob="beforeend" class="toast toast-end toast-bottom z-50"><t t-out="slot"/></div>
+</template>
+</templates>

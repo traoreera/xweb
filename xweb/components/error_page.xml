@@ -1,0 +1,13 @@
+<template t-name="xweb.error_page">
+    <t t-set="code" t-default="'403'"/>
+    <t t-set="title" t-default="'Accès refusé'"/>
+    <t t-set="message" t-default="''"/>
+    <t t-set="home_path" t-default="'/'"/>
+    <div class="flex flex-col items-center text-center gap-4 py-16">
+        <div class="text-7xl font-bold text-base-content/15"><t t-esc="code"/></div>
+        <h1 class="text-2xl font-semibold"><t t-esc="title"/></h1>
+        <t t-if="message"><p class="opacity-70 max-w-md"><t t-esc="message"/></p></t>
+        <div class="flex gap-2"><t t-out="slot"/></div>
+        <a t-att-href="home_path" class="btn btn-primary btn-sm gap-2"><t t-call="xweb.icon" name="arrow_left" extra_class="size-4"/>Retour à l'accueil</a>
+    </div>
+</template>

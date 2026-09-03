@@ -1,0 +1,19 @@
+<template t-name="xweb.badge">
+    <t t-set="color" t-default="'neutral'"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="variant" t-default="''"/>
+    <t t-set="icon_leading" t-default="''"/>
+    <t t-set="icon_trailing" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="style_class" t-value="'' if variant == 'solid' else 'badge-soft'"/>
+    <t t-if="href">
+        <a t-att-href="href" t-attf-class="badge badge-{{color}} badge-{{size}} {{style_class}} {{extra_class}}">
+            <t t-if="icon_leading" t-out="icon_leading"/><t t-out="slot"/><t t-if="icon_trailing" t-out="icon_trailing"/>
+        </a>
+    </t>
+    <t t-else="1">
+        <span t-attf-class="badge badge-{{color}} badge-{{size}} {{style_class}} {{extra_class}}">
+            <t t-if="icon_leading" t-out="icon_leading"/><t t-out="slot"/><t t-if="icon_trailing" t-out="icon_trailing"/>
+        </span>
+    </t>
+</template>

@@ -1,0 +1,17 @@
+<template t-name="xweb.stat">
+    <t t-set="title" t-default="''"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="desc" t-default="''"/>
+    <t t-set="icon" t-default="''"/>
+    <t t-set="color" t-default="'primary'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="stats bg-base-100 border border-base-300 {{extra_class}}">
+        <div class="stat">
+            <t t-if="icon"><div t-attf-class="stat-figure text-{{color}}"><t t-call="xweb.icon" t-att-name="icon" extra_class="size-8"/></div></t>
+            <div class="stat-title"><t t-esc="title"/></div>
+            <div class="stat-value"><t t-esc="value"/></div>
+            <t t-if="desc"><div class="stat-desc"><t t-esc="desc"/></div></t>
+            <t t-out="slot"/>
+        </div>
+    </div>
+</template>

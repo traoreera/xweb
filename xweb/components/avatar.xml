@@ -1,0 +1,23 @@
+<template t-name="xweb.avatar">
+    <t t-set="initial" t-default="''"/>
+    <t t-set="src" t-default="''"/>
+    <t t-set="alt" t-default="''"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="shape" t-default="'circle'"/>
+    <t t-set="status" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="size_class" t-value="{'xs': 'w-6', 'sm': 'w-8', 'md': 'w-10', 'lg': 'w-16', 'xl': 'w-24'}.get(size, 'w-10')"/>
+    <t t-set="text_class" t-value="{'xs': 'text-xs', 'sm': 'text-sm', 'md': 'text-base', 'lg': 'text-xl', 'xl': 'text-3xl'}.get(size, 'text-base')"/>
+    <t t-set="shape_class" t-value="'rounded-full' if shape == 'circle' else 'rounded-box'"/>
+    <t t-set="status_class" t-value="'avatar-online' if status == 'online' else ('avatar-offline' if status == 'offline' else '')"/>
+    <div t-attf-class="avatar {{ '' if src else 'avatar-placeholder' }} {{status_class}} {{extra_class}}">
+        <!-- base-300/base-content, pas neutral/neutral-content : le cercle
+             sombre + initiale claire de ce placeholder ne doit pas dépendre
+             de ce que "neutral" représente pour le reste de l'appli (badges
+             notamment — assets/app.css, historique du choix). -->
+        <div t-attf-class="{{size_class}} {{shape_class}} {{ '' if src else 'bg-base-300 text-base-content' }}">
+            <t t-if="src"><img t-att-src="src" t-att-alt="alt or initial"/></t>
+            <t t-else="1"><span t-attf-class="{{text_class}}"><t t-esc="initial"/></span></t>
+        </div>
+    </div>
+</template>

@@ -1,0 +1,13 @@
+<template t-name="xweb.button">
+    <t t-if="href">
+        <a t-att-href="href" t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}">
+            <t t-out="slot"/>
+        </a>
+    </t>
+    <t t-else="1">
+        <button t-att-type="type" t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}"
+                t-att-disabled="disabled">
+            <t t-out="slot"/>
+        </button>
+    </t>
+</template>

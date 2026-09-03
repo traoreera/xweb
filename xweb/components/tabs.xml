@@ -1,0 +1,16 @@
+<template t-name="xweb.tabs">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="variant" t-default="'border'"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="current_path" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div role="tablist" t-attf-class="tabs tabs-{{variant}} tabs-{{size}} {{extra_class}}">
+        <t t-foreach="items" t-as="tab">
+            <a role="tab" t-att-href="tab.get('href')"
+               t-attf-class="tab gap-2 {{ 'tab-active' if tab.get('active') or (current_path and tab.get('href') == current_path) else '' }}">
+                <t t-if="tab.get('icon')"><t t-call="xweb.icon" t-att-name="tab['icon']" extra_class="size-4"/></t>
+                <t t-esc="tab['label']"/>
+            </a>
+        </t>
+    </div>
+</template>

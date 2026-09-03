@@ -1,0 +1,74 @@
+<!--
+    xweb.kanban — tableau à colonnes, cartes déplaçables en glisser-déposer
+    natif HTML5 (draggable="true" + dragstart/dragover/drop en _hyperscript,
+    aucune librairie externe — charger SortableJS/Alpine irait à l'encontre
+    du choix de xweb de n'avoir aucun bundle JS à charger, CLAUDE.md).
+
+    Props :
+      columns   : [{id, title, cards: [{id, title, subtitle?}, ...]}, ...]
+                  card['id'] DOIT être unique dans TOUTE la page (posé comme
+                  id= sur l'élément DOM — document.getElementById() s'en sert
+                  pour retrouver la carte glissée, voir plus bas).
+      move_url  : URL hx-post appelée à chaque dépôt d'une carte (reçoit
+                  card_id + column_id en POST). '' (défaut) désactive la
+                  persistance — les cartes bougent visuellement mais rien
+                  n'est envoyé au serveur (hx-post omis si move_url est vide,
+                  t-att-* n'émet pas d'attribut pour une valeur falsy).
+
+    Mécanique : `put X at end of Y` (commande _hyperscript — PAS `move X to
+    end of Y`, absent de cette version vendorisée : `move` seul n'accepte
+    pas `to end of`, testé et confirmé planter le parseur ; `put ... at end
+    of ...` déplace vraiment le nœud DOM existant, ce n'est pas un clone,
+    vérifié en direct) déplace la carte dans le DOM instantanément, sans
+    attendre de réponse serveur — l'appel hx-post part en parallèle pour
+    persister, hx-swap="none" (rien à ré-afficher, l'état visuel est déjà
+    correct). `send kanban:moved(card_id:…, column_id:…) to draggedCard`
+    pose ces valeurs sur `event.detail`, que hx-vals="js:…" lit au
+    déclenchement (htmx donne accès à `event`, l'événement qui a déclenché
+    la requête, dans une expression hx-vals js:). Pas de len() ni de compte
+    de cartes ici — CLAUDE.md : les calculs viennent déjà faits de la vue
+    Python si un appelant en a besoin.
+
+    Vérifié en vrai : scripts/verify-hyperscript.mjs (mécanique DOM/event)
+    et plugins/demo (round-trip hx-post réel, docs/components.md).
+-->
+<template t-name="xweb.kanban">
+    <t t-set="columns" t-default="[]"/>
+    <t t-set="move_url" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="kanban flex gap-4 overflow-x-auto pb-2 {{extra_class}}">
+        <t t-foreach="columns" t-as="col">
+            <div class="kanban-column flex-none w-72 bg-base-200 rounded-box p-3 flex flex-col gap-2"
+                 t-att-data-column-id="col['id']"
+                 _="on dragover halt the event then add .bg-base-300 to me
+                    on dragleave remove .bg-base-300 from me
+                    on drop halt the event then remove .bg-base-300 from me
+                       set draggedId to event.dataTransfer.getData('text/plain')
+                       set draggedCard to document.getElementById(draggedId)
+                       if draggedCard is not null
+                         put draggedCard at end of me
+                         send kanban:moved(card_id: draggedId, column_id: my.dataset.columnId) to draggedCard
+                       end">
+                <div class="kanban-column-title font-semibold text-sm px-1"><t t-esc="col['title']"/></div>
+                <div class="kanban-cards flex flex-col gap-2 min-h-10">
+                    <t t-foreach="col['cards']" t-as="card">
+                        <div class="kanban-card card bg-base-100 shadow-sm p-3 cursor-grab active:cursor-grabbing"
+                             draggable="true"
+                             t-att-id="card['id']"
+                             t-att-hx-post="move_url or None"
+                             hx-trigger="kanban:moved"
+                             hx-vals="js:{card_id: event.detail.card_id, column_id: event.detail.column_id}"
+                             hx-swap="none"
+                             _="on dragstart call event.dataTransfer.setData('text/plain', my.id) then add .opacity-50 to me
+                                on dragend remove .opacity-50 from me">
+                            <div class="text-sm font-medium"><t t-esc="card['title']"/></div>
+                            <t t-if="card.get('subtitle')">
+                                <div class="text-xs opacity-60 mt-1"><t t-esc="card['subtitle']"/></div>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </t>
+    </div>
+</template>

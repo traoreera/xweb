@@ -1,0 +1,6 @@
+<template t-name="xweb.tooltip">
+    <t t-set="text" t-default="''"/>
+    <t t-set="position" t-default="'top'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="tooltip tooltip-{{position}} {{extra_class}}" t-att-data-tip="text"><t t-out="slot"/></div>
+</template>

@@ -1,0 +1,16 @@
+<template t-name="xweb.textarea">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="value" t-default="''"/>
+    <t t-set="placeholder" t-default="''"/>
+    <t t-set="rows" t-default="4"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="readonly" t-default="False"/>
+    <t t-set="required" t-default="False"/>
+    <t t-set="invalid" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <textarea t-att-name="name or None" t-att-id="id or None" t-att-placeholder="placeholder or None" t-att-rows="rows"
+              t-att-disabled="disabled" t-att-readonly="readonly" t-att-required="required"
+              t-attf-class="textarea w-full textarea-{{size}} {{ 'textarea-error' if invalid else '' }} {{extra_class}}"><t t-esc="value"/></textarea>
+</template>

@@ -1,0 +1,4 @@
+<template t-name="xweb.description">
+    <t t-set="extra_class" t-default="''"/>
+    <p t-attf-class="text-sm opacity-70 mt-1 {{extra_class}}"><t t-out="slot"/></p>
+</template>
