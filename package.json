@@ -7,7 +7,6 @@
     "verify:hyperscript": "node scripts/verify-hyperscript.mjs",
     "verify:storage": "node scripts/verify-storage.mjs",
     "verify:editable-table": "uv run python scripts/render_editable_table_fixture.py && node scripts/verify-editable-table.mjs",
-    "verify:editable-table-live": "node scripts/verify-editable-table-live.mjs",
     "verify:demo": "node scripts/verify-demo-page.mjs",
     "build:css": "tailwindcss -i assets/app.css -o xweb/static/app.css --minify",
     "watch:css": "tailwindcss -i assets/app.css -o xweb/static/app.css --watch"

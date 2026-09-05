@@ -1,5 +1,5 @@
 app:
-  name: "xweb-skeleton"
+  name: "xweb"
   env: "development"
   secret_key: "debug-key"
   # Défaut réel de xcore = "/plugin" (singulier, xcore/configurations/sections.py:93)
@@ -10,18 +10,12 @@ app:
 
 plugins:
   directory: "./plugins"
-  # Champ SÉPARÉ de app.secret_key (xcore/configurations/loader.py:191-196,
-  # confirmé en creusant une "Signature invalide" en lançant le squelette) —
-  # doit matcher la clé utilisée pour signer plugins/demo/plugin.sig.
-  secret_key: "debug-key"
   strict_trusted: false
 
 services:
   # plugins/auth (docs/auth.md) exige self.get_service("db") et ("cache")
-  # sans repli — DatabaseServiceProvider n'enregistre "db" QUE si
-  # services.databases n'est pas vide (xcore/services/container.py:46-51,
-  # vérifié). "cache" est déjà gratuit (CacheConfig() par défaut est
-  # toujours truthy → backend "memory" sans section explicite).
+  # pour être réhabilité — "cache" est gratuit (defaults memory), "db" a
+  # besoin de la section ci-dessous. Invisible tant que plugins/ est vide.
   databases:
     default:
       type: sqlasync
@@ -34,27 +28,12 @@ services:
         # xweb.button, xweb.shell, xweb.toggle_demo… n'ont plus besoin d'être
         # listés ici : XwebExtension.init() charge xweb/components/ tout
         # seul, embarqué dans le paquet xweb (docs/integration-xcore.md).
-        # `directory:` reste disponible si CE projet voulait un jour son
-        # propre dossier de templates partagés en plus — pas le cas ici.
-        namespaces:
-          demo: "plugins/demo/templates"
-          # plugins/account : pont HTML complet vers plugins/auth (login, MFA,
-          # organisations, profil, sessions…) — remplace l'ancien plugins/login.
-          account: "plugins/account/templates"
-          # plugins/auth n'a pas de templates xweb — c'est une API JSON pure
-          # (routes/*.py, aucun .xml) — voir docs/auth.md.
-          # Pages propres à CE projet (pas à un plugin) — pour l'instant la
-          # landing page sur "/". Aucun plugin ne peut servir "/" lui-même :
-          # xcore préfixe systématiquement chaque routeur de plugin sous
-          # /plugins/<nom>/ (xcore/__init__.py::boot(), vérifié) — la route
-          # "/" est donc montée directement par main.py, après xcore.boot(),
-          # au même endroit que bind_hot_reload().
-          site: "templates"
+        # `namespaces:` reste disponible si CE projet voulait un jour son
+        # propre dossier de templates partagés en plus — pas le cas ici :
+        # chaque hôte monte ses propres templates sur `app` directement.
+        namespaces: {}
         # docs/i18n.md — codes en plus du français source ("fr", jamais
         # listé lui-même : xweb/i18n.py::Catalog n'a besoin d'aucun fichier
-        # pour lui, _() y est l'identité). Périmètre traduit pour l'instant :
-        # la landing page + le parcours d'auth anonyme (locales/en.json) —
-        # le reste de l'appli reste en français, une clé absente du
-        # catalogue retombe simplement sur le texte source, jamais une erreur.
+        # pour lui, _() y est l'identité).
         locales_dir: "locales"
         locales: ["en"]

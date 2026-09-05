@@ -23,7 +23,6 @@
 | [`email.md`](email.md) | Génération HTML d'email via le même moteur QWeb (`xweb/email.py`) |
 | [`integration-xcore.md`](integration-xcore.md) | Câblage `ext.xweb`, permissions, cache |
 | [`plugins.md`](plugins.md) | Guide auteur de plugin |
-| [`studio.md`](studio.md) | Éditeur visuel de templates QWeb (UI builder pur, spec v2 — rien d'implémenté) |
 | [`migration-guide.md`](migration-guide.md) | Checklist de parité et procédure de bascule |
 | [`cli.md`](cli.md) | Commandes `xweb` en ligne de commande |
 
