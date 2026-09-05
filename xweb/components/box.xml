@@ -1,0 +1,21 @@
+<!--
+    xweb.box — conteneur neutre : un <div> et rien d'autre, aucune classe
+    de layout imposée (contrairement à xweb.stack/grid ci-dessous). Existe
+    pour le Studio (docs/studio.md §1) : le canvas ne manipule QUE des
+    t-call vers des composants déjà enregistrés, jamais un <div> brut posé
+    à la main — sans ce composant, envelopper un morceau de contenu pour
+    lui poser une classe (fond, padding, position) n'aurait aucun t-name à
+    appeler.
+
+    Props :
+      extra_class : classes supplémentaires — c'est la SEULE chose que ce
+                    composant apporte, littérales, jamais interpolées
+                    (aucun risque de piège Tailwind, CLAUDE.md#theming)
+    slot : le contenu enveloppé
+-->
+<template t-name="xweb.box">
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="{{extra_class}}">
+        <t t-out="slot"/>
+    </div>
+</template>

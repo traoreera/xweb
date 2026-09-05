@@ -1,0 +1,35 @@
+<!--
+    xweb.container — largeur maximale + centrage, le motif déjà répété en
+    dur dans xweb.marketing_layout ("mx-auto max-w-7xl px-4 sm:px-6
+    lg:px-8") et templates/components_showcase.xml ("max-w-6xl mx-auto") —
+    généralisé ici en composant plutôt que recopié à chaque nouvelle page.
+    Contrairement à xweb.stack/grid (arrangent les ENFANTS), xweb.container
+    contraint sa PROPRE largeur — les deux se combinent normalement
+    (un xweb.container qui contient un xweb.stack/grid).
+
+    Classes produites par dictionnaire littéral — aucun safelist Tailwind
+    requis (CLAUDE.md#theming), même principe que xweb.stack/grid.
+
+    Props :
+      max_width   : sm|md|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl|full|none, "7xl" par défaut
+                    (la largeur déjà utilisée par xweb.shell/marketing_layout)
+      padded      : bool, True par défaut — padding horizontal responsive
+                    (px-4 sm:px-6 lg:px-8, même motif que marketing_layout)
+      center      : bool, True par défaut — mx-auto
+      extra_class : classes supplémentaires
+    slot : le contenu contraint
+-->
+<template t-name="xweb.container">
+    <t t-set="max_width" t-default="'7xl'"/>
+    <t t-set="padded" t-default="True"/>
+    <t t-set="center" t-default="True"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="max_width_class" t-value="{
+        'sm': 'max-w-sm', 'md': 'max-w-md', 'lg': 'max-w-lg', 'xl': 'max-w-xl',
+        '2xl': 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl', '5xl': 'max-w-5xl',
+        '6xl': 'max-w-6xl', '7xl': 'max-w-7xl', 'full': 'max-w-full', 'none': 'max-w-none',
+    }.get(max_width, 'max-w-7xl')"/>
+    <div t-attf-class="{{max_width_class}} {{ 'mx-auto' if center else '' }} {{ 'px-4 sm:px-6 lg:px-8' if padded else '' }} {{extra_class}}">
+        <t t-out="slot"/>
+    </div>
+</template>

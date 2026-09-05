@@ -1,0 +1,39 @@
+<!--
+    xweb.stack — arrangement flex de plusieurs éléments (ligne ou colonne),
+    le primitif de composition le plus courant du Studio (docs/studio.md
+    §1) : deux xweb.button côte à côte, un formulaire empilé verticalement,
+    etc. — sans lui, le canvas n'a aucun t-call pour arranger plusieurs
+    autres t-call ensemble.
+
+    Toutes les classes sont produites par des dictionnaires littéraux
+    (comme xweb.avatar/xweb.card), jamais par interpolation directe d'une
+    prop dans le nom de classe — chaque valeur de sortie possible
+    ("gap-4", "items-center"…) apparaît donc déjà en texte source dans CE
+    fichier, aucun safelist Tailwind à tenir à jour (CLAUDE.md#theming, le
+    piège que xweb.toggle/select/textarea/range/spinner ont dû corriger
+    après coup).
+
+    Props :
+      direction   : row|col, "col" par défaut
+      gap         : none|xs|sm|md|lg|xl (échelle DaisyUI habituelle)
+      wrap        : bool — flex-wrap
+      align       : start|center|end|stretch|baseline (items-*)
+      justify     : start|center|end|between|around|evenly (justify-*)
+      extra_class : classes supplémentaires
+    slot : les éléments arrangés (typiquement plusieurs t-call)
+-->
+<template t-name="xweb.stack">
+    <t t-set="direction" t-default="'col'"/>
+    <t t-set="gap" t-default="'md'"/>
+    <t t-set="wrap" t-default="False"/>
+    <t t-set="align" t-default="'stretch'"/>
+    <t t-set="justify" t-default="'start'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="direction_class" t-value="'flex-row' if direction == 'row' else 'flex-col'"/>
+    <t t-set="gap_class" t-value="{'none': 'gap-0', 'xs': 'gap-1', 'sm': 'gap-2', 'md': 'gap-4', 'lg': 'gap-6', 'xl': 'gap-8'}.get(gap, 'gap-4')"/>
+    <t t-set="align_class" t-value="{'start': 'items-start', 'center': 'items-center', 'end': 'items-end', 'stretch': 'items-stretch', 'baseline': 'items-baseline'}.get(align, 'items-stretch')"/>
+    <t t-set="justify_class" t-value="{'start': 'justify-start', 'center': 'justify-center', 'end': 'justify-end', 'between': 'justify-between', 'around': 'justify-around', 'evenly': 'justify-evenly'}.get(justify, 'justify-start')"/>
+    <div t-attf-class="flex {{direction_class}} {{gap_class}} {{align_class}} {{justify_class}} {{ 'flex-wrap' if wrap else '' }} {{extra_class}}">
+        <t t-out="slot"/>
+    </div>
+</template>

@@ -1,0 +1,28 @@
+<!--
+    xweb.grid — grille CSS à N colonnes fixes. v1 volontairement simple :
+    un seul nombre de colonnes, pas de variante responsive par breakpoint
+    (sm:/lg:/…) — même choix "pas d'éditeur avancé en v1" que
+    xweb.rating (pas de demi-étoile) ou xweb.editable_table (pas d'options
+    de select éditables) ; composer plusieurs xweb.grid avec des
+    extra_class `sm:...`/`lg:...` à la main reste possible pour qui en a
+    besoin, ce composant ne l'empêche pas.
+
+    Classes produites par dictionnaire littéral, comme xweb.stack — aucun
+    safelist Tailwind requis (CLAUDE.md#theming).
+
+    Props :
+      cols        : 1|2|3|4|5|6|12 — nombre de colonnes, 2 par défaut
+      gap         : none|xs|sm|md|lg|xl (même échelle que xweb.stack)
+      extra_class : classes supplémentaires
+    slot : les éléments de la grille (typiquement plusieurs t-call)
+-->
+<template t-name="xweb.grid">
+    <t t-set="cols" t-default="2"/>
+    <t t-set="gap" t-default="'md'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="cols_class" t-value="{1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6', 12: 'grid-cols-12'}.get(cols, 'grid-cols-2')"/>
+    <t t-set="gap_class" t-value="{'none': 'gap-0', 'xs': 'gap-1', 'sm': 'gap-2', 'md': 'gap-4', 'lg': 'gap-6', 'xl': 'gap-8'}.get(gap, 'gap-4')"/>
+    <div t-attf-class="grid {{cols_class}} {{gap_class}} {{extra_class}}">
+        <t t-out="slot"/>
+    </div>
+</template>
