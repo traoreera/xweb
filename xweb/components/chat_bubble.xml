@@ -1,0 +1,40 @@
+<!--
+    xweb.chat_bubble — bulle de message (DaisyUI natif, .chat/.chat-bubble),
+    un message par appel — un fil de conversation s'obtient en appelant ce
+    composant plusieurs fois, pas via une prop "messages" (chaque bulle a
+    potentiellement son propre avatar/side/couleur, pas une liste homogène).
+
+    Props :
+      side    : "start" | "end" — "start" par défaut (l'autre personne à
+                gauche, "end" pour ses propres messages, convention DaisyUI)
+      message : texte du message (échappé, t-esc)
+      author  : nom affiché au-dessus (chat-header), optionnel
+      time    : heure affichée à côté du nom, optionnel
+      avatar_initial : lettre affichée dans un xweb.avatar (chat-image),
+                absent -> pas d'avatar (DaisyUI dégrade proprement sans)
+      color   : classe DaisyUI de couleur de bulle (chat-bubble-primary,
+                etc.) — vide par défaut, la couleur neutre native de DaisyUI
+-->
+<template t-name="xweb.chat_bubble">
+    <t t-set="side" t-default="'start'"/>
+    <t t-set="message" t-default="''"/>
+    <t t-set="author" t-default="''"/>
+    <t t-set="time" t-default="''"/>
+    <t t-set="avatar_initial" t-default="''"/>
+    <t t-set="color" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="chat chat-{{side}} {{extra_class}}">
+        <t t-if="avatar_initial">
+            <div class="chat-image">
+                <t t-call="xweb.avatar" t-att-initial="avatar_initial" size="sm"/>
+            </div>
+        </t>
+        <t t-if="author or time">
+            <div class="chat-header">
+                <t t-if="author"><t t-esc="author"/></t>
+                <t t-if="time"><time class="text-xs opacity-50"><t t-esc="time"/></time></t>
+            </div>
+        </t>
+        <div t-attf-class="chat-bubble {{color}}"><t t-esc="message"/></div>
+    </div>
+</template>

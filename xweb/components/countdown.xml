@@ -1,0 +1,29 @@
+<!--
+    xweb.countdown — affichage numérique animé (DaisyUI natif, .countdown,
+    une transformée CSS pilotée par une seule custom property). Rendu
+    STATIQUE ici : xweb ne pose aucun JS pour faire décompter cette valeur
+    seconde par seconde (CLAUDE.md, zéro JS écrit à la main hors de ce qui
+    est strictement nécessaire) — utile pour afficher un nombre déjà connu
+    (jours restants, compteur), pas un chronomètre live sans un script
+    dédié que ce composant ne fournit pas.
+
+    Props :
+      value : entier 0-99 (la mécanique CSS de DaisyUI est pensée pour un
+              compteur à deux chiffres par span — un nombre plus grand
+              affiche quand même la bonne valeur en texte alternatif via
+              aria-label, mais l'animation elle-même suppose 0-99)
+      label : texte sous le nombre (ex. "jours")
+      size  : classe de taille de police Tailwind (text-5xl par défaut)
+-->
+<template t-name="xweb.countdown">
+    <t t-set="value" t-default="0"/>
+    <t t-set="label" t-default="''"/>
+    <t t-set="size" t-default="'text-5xl'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="flex flex-col items-center gap-1 {{extra_class}}">
+        <span t-attf-class="countdown font-mono {{size}}" t-attf-aria-label="{{value}}">
+            <span t-attf-style="--value:{{value}};" t-attf-aria-label="{{value}}"></span>
+        </span>
+        <t t-if="label"><span class="text-xs opacity-60"><t t-esc="label"/></span></t>
+    </div>
+</template>

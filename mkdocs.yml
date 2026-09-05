@@ -74,6 +74,7 @@ nav:
       - inheritance.md
       - shell.md
       - components.md
+      - studio.md
       - theming.md
       - i18n.md
       - pdf.md

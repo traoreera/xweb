@@ -1,0 +1,31 @@
+<!--
+    xweb.list — liste compacte de lignes (DaisyUI natif, .list/.list-row),
+    pour une donnée simple (titre + sous-titre + icône) sans les colonnes
+    de xweb.table ni la navigation de xweb.menu — le bon choix quand
+    aucun des deux ne correspond vraiment.
+
+    Props :
+      items : [{title, subtitle?, icon?}]
+      extra_class : classes supplémentaires sur le conteneur
+-->
+<template t-name="xweb.list">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="extra_class" t-default="''"/>
+    <ul t-attf-class="list bg-base-100 {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <li class="list-row">
+                <t t-if="item.get('icon')">
+                    <div class="flex items-center">
+                        <t t-call="xweb.icon" t-att-name="item['icon']" extra_class="size-4 opacity-60"/>
+                    </div>
+                </t>
+                <div>
+                    <div><t t-esc="item['title']"/></div>
+                    <t t-if="item.get('subtitle')">
+                        <div class="text-xs opacity-60"><t t-esc="item['subtitle']"/></div>
+                    </t>
+                </div>
+            </li>
+        </t>
+    </ul>
+</template>

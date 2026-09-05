@@ -119,4 +119,9 @@ Filtres disponibles (liste exhaustive) :
         class="btn btn-primary">Ajouter</button>
 ```
 
-**Point de vigilance** — préférer `hx-on="click: …"` (événement dans la valeur) à `hx-on:click="…"` (événement dans le nom, réintroduit un `:` qui déclenche la résolution d'espace de noms XML). Voir *xweb Blueprint* §2.
+**Point de vigilance, revérifié contre le vrai code** — l'ancienne recommandation ici ("préférer `hx-on="click: …"`") était fausse sur les deux points, testé directement :
+
+- `hx-on:click="…"` (le `:` dans le NOM) ne se contente pas de "déclencher la résolution d'espace de noms XML" en théorie — `lxml.etree.fromstring()` (le parseur réel, `xweb/engine/parser.py`) **rejette carrément le fichier** : `XMLSyntaxError: Namespace prefix hx-on ... is not defined`. Un template qui contient ça ne charge jamais, `TemplateSyntaxError` au boot — pas un piège silencieux, un échec bruyant immédiat.
+- `hx-on="click: …"` (l'ancienne syntaxe à un seul attribut, événement dans la VALEUR) que ce paragraphe recommandait à la place a été **retirée dans htmx 2.0** — testé contre le vrai `xweb/static/htmx.min.js` (2.0.10) en jsdom : cet attribut ne déclenche plus rien du tout, silencieusement.
+
+La seule forme qui fonctionne réellement dans cette pile est `hx-on-click="…"` (tiret, pas deux-points — jamais un problème de namespace XML puisqu'il n'y a pas de `:`). Elle exécute cependant du JavaScript **arbitraire** via `new Function()` (confirmé en lisant `htmx.min.js` et en l'exécutant), ce qui la place hors de la whitelist `hx-*` du Studio (`studio/xweb/assets/htmx.meta.yaml`, `forbidden_families`) — même posture que le reste de ce dépôt ("rien d'exécutable ne vient d'un plugin", filtres compris). Pour du comportement client sur un événement, `_hyperscript` (`_="on click …"`) reste le choix attendu partout dans ce projet, jamais `hx-on-*`.

@@ -61,20 +61,22 @@ def test_checkbox_reflects_the_row_value(registry):
     assert checked_count == 1
 
 
-def test_select_cell_badge_uses_the_options_color(registry):
+def test_select_cell_shows_a_colored_dot_for_the_options_color(registry):
+    """Redessiné depuis : point coloré + texte simple, plus de badge —
+    bg-{{color}} sur le point, pas badge-{{color}} sur une étiquette."""
     html = registry.render("xweb.editable_table", {"columns": COLUMNS, "rows": ROWS, "save_url": "/x"})
-    assert "badge-success" in html  # r1 = active
-    assert "badge-warning" in html  # r2 = paused
+    assert "bg-success" in html  # r1 = active
+    assert "bg-warning" in html  # r2 = paused
 
 
 def test_add_row_button_omitted_when_add_row_url_is_empty(registry):
     html = registry.render("xweb.editable_table", {"columns": COLUMNS, "rows": ROWS, "save_url": "/x"})
-    assert "Ajouter une ligne" not in html
+    assert "Nouvelle ligne" not in html
 
 
 def test_add_row_button_present_when_add_row_url_given(registry):
     html = registry.render("xweb.editable_table", {"columns": COLUMNS, "rows": ROWS, "save_url": "/x", "add_row_url": "/rows"})
-    assert "Ajouter une ligne" in html
+    assert "Nouvelle ligne" in html
     assert 'hx-post="/rows"' in html
 
 

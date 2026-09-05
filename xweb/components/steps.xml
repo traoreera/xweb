@@ -1,0 +1,33 @@
+<!--
+    xweb.steps — indicateur d'étapes (assistant/onboarding), DaisyUI natif
+    (.steps/.step), aucun JS : c'est un indicateur de progression, pas un
+    composant interactif — la navigation entre étapes reste la
+    responsabilité du plugin appelant (bouton "Suivant"/"Précédent" qui
+    change de page ou de fragment htmx).
+
+    Props :
+      items       : [{label, description?}] — un <li class="step"> par entrée
+      current     : index (0-based) de la dernière étape ACHEVÉE, -1 par
+                    défaut (aucune étape marquée) — items[0..current]
+                    reçoivent step-primary, jamais une supposition sur
+                    "la première étape est toujours acquise"
+      vertical    : bool, False par défaut (horizontal, l'orientation DaisyUI
+                    par défaut)
+      extra_class : classes supplémentaires sur le <ul> racine
+-->
+<template t-name="xweb.steps">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="current" t-default="-1"/>
+    <t t-set="vertical" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <ul t-attf-class="steps {{ 'steps-vertical' if vertical else 'steps-horizontal' }} {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <li t-attf-class="step {{ 'step-primary' if item_index &lt;= current else '' }}">
+                <t t-esc="item['label']"/>
+                <t t-if="item.get('description')">
+                    <span class="block text-xs opacity-60 font-normal"><t t-esc="item['description']"/></span>
+                </t>
+            </li>
+        </t>
+    </ul>
+</template>

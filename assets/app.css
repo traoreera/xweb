@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Ce que xweb exige pour que ses propres composants fonctionnent
+   (scanner ses .xml, la sécurité anti-scan des classes interpolées, la
+   mécanique CSS de theme_toggle/popover/sidebar_toggle) — jamais une
+   couleur de marque, jamais un chemin vers NOS templates à nous. Un
+   projet qui installe xweb comme paquet (pas ce monorepo) importe ce même
+   fichier depuis son propre emplacement d'installation — voir
+   docs/theming.md#build pour le guide complet, et le commentaire en tête
+   de xweb/static/xweb.css pour pourquoi ce découpage existe. */
+@import "../xweb/static/xweb.css";
+
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
 }
@@ -117,89 +127,56 @@
   --noise: 0;
 }
 
-/* Les templates sont des .xml, pas une extension que le scanner de
-   contenu automatique de Tailwind v4 reconnaît forcément par défaut —
-   explicite plutôt que de compter sur l'heuristique (docs/theming.md#build). */
-@source "../xweb/components/**/*.xml";
+/* Nos propres templates à nous (ce projet, pas xweb) — celui de xweb/
+   components/ est déjà couvert par le @import xweb.css tout en haut,
+   scanné relativement à SON emplacement à lui, pas au nôtre. */
+@source "../templates/**/*.xml";
 @source "../plugins/**/*.xml";
 
-/* Sécurité anti-scan — classes DaisyUI composées à l'exécution (Python,
-   t-attf-class/t-value dans les composants : xweb.button, xweb.badge,
-   xweb.alert, xweb.toggle, xweb.radio, xweb.range, xweb.select,
-   xweb.textarea, xweb.spinner, xweb.stat, xweb.tabs, xweb.menu, xweb.kbd,
-   xweb.dropdown, xweb.table…). Le scanner de contenu de Tailwind v4 lit le
-   texte SOURCE des .xml, jamais le résultat d'une interpolation
-   ("btn-{{variant}}", ou 'text-'+color côté Python) — une classe qui
-   n'apparaît nulle part sous sa forme littérale complète n'est tout
-   simplement jamais générée (constaté : toggle-primary/select-md/
-   textarea-md/range-primary manquaient de app.css alors que d'autres
-   couleurs identiques passaient par accident, via une occurrence littérale
-   ailleurs). `@source inline()` force la génération de tout le produit
-   couleurs × tailles pour chaque composant concerné, indépendamment de ce
-   qu'un plugin appelant passe réellement comme prop — la seule façon de
-   garder `t-attf-class="btn btn-{{variant}}"` (docs/components.md : ne pas
-   réimplémenter les dictionnaires de variantes, DaisyUI les fournit) sans
-   deviner à l'avance toutes les valeurs qu'un plugin utilisera. */
-@source inline("{btn,badge,alert,radio,toggle,range,select,textarea,input,loading,tabs,menu,kbd,table}-{primary,secondary,accent,neutral,info,success,warning,error}");
-@source inline("{btn,badge,input,select,textarea,radio,toggle,range,loading,tabs,menu,kbd,table}-{xs,sm,md,lg,xl}");
-@source inline("text-{primary,secondary,accent,neutral,info,success,warning,error,white,current}");
-@source inline("tabs-{border,box,lift}");
-@source inline("dropdown-{top,bottom,left,right,center,start,end}");
 
-/* Icônes qui ne s'affichent que dans un thème (xweb.theme_toggle,
-   xweb/components/layout.xml) — DaisyUI thème via data-theme sur <html>
-   (docs/theming.md), pas de classe .dark : un simple sélecteur d'attribut
-   suffit, aucune variante Tailwind avec `&` (qu'il faudrait écrire &amp;
-   dans du XML, invisible au scanner de classes). */
-@layer components {
-  .theme-dark-only {
-    display: none;
-  }
+/* Catalogue de composants (templates/components_showcase.xml) — plus de
+   boîte encadrée+ombrée identique pour les ~40 démos (le tell "SaaS-card
+   kit" du frontend-design skill : tout coupé en cartes arrondies
+   interchangeables, un seul style peu importe le contenu — un simple
+   bouton et un calendrier entier recevaient exactement le même encadré).
+   Remplacé par de l'espace — le grid-gap sépare, le libellé du composant
+   (déjà en place, text-xs font-mono) porte un filet fin en dessous, même
+   langage que .kanban-column-title plus bas : un titre souligné plutôt
+   qu'un encadré. */
+.showcase-item>p:first-child {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.08);
+}
 
-  [data-theme="dark"] .theme-dark-only {
-    display: inline-block;
-  }
 
-  [data-theme="dark"] .theme-light-only {
-    display: none;
-  }
+/* ─────────────────────────────────────────────
+   Kanban showcase — mise en page propre à CETTE page (pas à xweb.kanban
+   lui-même). Le rendu "panneaux plats façon Obsidian" (colonnes séparées
+   par des filets, cartes en liste dense, accent teal au survol) est
+   maintenant l'identité par défaut de xweb.kanban — livrée avec le paquet
+   xweb (xweb/static/xweb.css), pas redéclarée ici. Idem pour
+   xweb.editable_table (plus de bloc ".editable-table" ici non plus).
+   Ce qui reste ici est uniquement la présentation de CETTE section de la
+   page catalogue : le libellé au-dessus, l'espacement du conteneur.
+   ───────────────────────────────────────────── */
 
-  /* xweb.popover (xweb/components/popover.xml) — masqué par défaut,
-     affiché en ajoutant .popover-open (_hyperscript). Pas de classe
-     Tailwind "hidden"/toggle : la classe .popover-open doit gagner sur
-     .popover-panel elle-même, une histoire de spécificité CSS qu'un
-     couple de classes utilitaires seules ne résout pas proprement. */
-  .popover-panel {
-    display: none;
-  }
+.showcase-block {
+  width: 100%;
+}
 
-  .popover-panel.popover-open {
-    display: block;
-  }
+.showcase-label {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: oklch(var(--bc) / 0.55);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
 
-  /* xweb.sidebar_toggle (xweb/components/layout.xml) — repli desktop de
-     #xweb-sidebar en rail d'icônes. data-sidebar sur <html>, même mécanique
-     que data-theme (persisté en localStorage, relu par le script
-     anti-flash AVANT le premier rendu — docs/shell.md).
-     #xweb-sidebar (id) l'emporte sur .w-60 (classe Tailwind posée dans
-     shell.xml) par spécificité CSS normale, jamais besoin de !important. */
-  [data-sidebar="collapsed"] #xweb-sidebar {
-    width: 4rem;
-  }
-
-  [data-sidebar="collapsed"] .sidebar-label {
-    display: none;
-  }
-
-  .sidebar-collapsed-only {
-    display: none;
-  }
-
-  [data-sidebar="collapsed"] .sidebar-collapsed-only {
-    display: inline-block;
-  }
-
-  [data-sidebar="collapsed"] .sidebar-expanded-only {
-    display: none;
-  }
+.kanban-demo-surface {
+  padding: 2px 0 18px;
+  overflow: hidden;
 }

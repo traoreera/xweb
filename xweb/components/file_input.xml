@@ -1,0 +1,29 @@
+<!--
+    xweb.file_input — <input type="file"> stylé DaisyUI. Même famille que
+    xweb.input (props name/id/disabled/required/invalid), pas un composant
+    "field" à part : s'utilise à l'intérieur d'un xweb.field comme les
+    autres champs (t-call="xweb.field" label="Avatar"><t t-call=
+    "xweb.file_input" name="avatar"/></t>), voir docs/components.md.
+
+    Props :
+      name/id     : identiques à xweb.input
+      accept      : filtre MIME/extension natif (ex. "image/*", ".pdf")
+      multiple    : bool, plusieurs fichiers
+      size        : xs|sm|md|lg|xl (DaisyUI)
+      disabled/required/invalid : identiques à xweb.input
+-->
+<template t-name="xweb.file_input">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <t t-set="accept" t-default="''"/>
+    <t t-set="multiple" t-default="False"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="disabled" t-default="False"/>
+    <t t-set="required" t-default="False"/>
+    <t t-set="invalid" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <input type="file"
+           t-att-name="name or None" t-att-id="id or None" t-att-accept="accept or None"
+           t-att-multiple="multiple" t-att-disabled="disabled" t-att-required="required"
+           t-attf-class="file-input w-full file-input-{{size}} {{ 'file-input-error' if invalid else '' }} {{extra_class}}"/>
+</template>

@@ -1,0 +1,38 @@
+<!--
+    xweb.timeline — historique/journal d'activité (audit log, fil
+    d'événements), DaisyUI natif (.timeline), colonne unique (tout le
+    contenu en timeline-end) plutôt que l'alternance gauche/droite que
+    DaisyUI supporte aussi — plus lisible pour un flux chronologique de
+    type "audit log", pas un usage qui bénéficie de l'alternance.
+
+    Props :
+      items : [{label, description?, icon?, date?}] — icon: nom xweb.icon
+              (défaut "check_circle"), date: chaîne déjà formatée côté vue
+              Python (aucun builtin date dans une expression QWeb, voir
+              xweb/calendar.py pour le même principe)
+      extra_class : classes supplémentaires sur le <ul> racine
+-->
+<template t-name="xweb.timeline">
+    <t t-set="items" t-default="[]"/>
+    <t t-set="extra_class" t-default="''"/>
+    <ul t-attf-class="timeline timeline-vertical timeline-compact {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <li>
+                <t t-if="not item_first"><hr/></t>
+                <div class="timeline-middle">
+                    <t t-call="xweb.icon" t-att-name="item.get('icon') or 'check_circle'" extra_class="size-4 text-primary"/>
+                </div>
+                <div class="timeline-end timeline-box">
+                    <div class="font-medium text-sm"><t t-esc="item['label']"/></div>
+                    <t t-if="item.get('description')">
+                        <div class="text-xs opacity-60 mt-0.5"><t t-esc="item['description']"/></div>
+                    </t>
+                    <t t-if="item.get('date')">
+                        <div class="text-xs opacity-40 mt-1"><t t-esc="item['date']"/></div>
+                    </t>
+                </div>
+                <t t-if="not item_last"><hr/></t>
+            </li>
+        </t>
+    </ul>
+</template>

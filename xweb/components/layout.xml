@@ -1,165 +1,308 @@
-<!--
-    Layouts partagés (docs/shell.md, xweb/mount.py) :
-
-    xweb.shell_head     — <head> commun à tous les layouts : CSS compilé,
-                          htmx, _hyperscript et le script anti-flash de
-                          thème (docs/theming.md). Ce <script> doit rester
-                          le PREMIER <script> inline du document et son
-                          texte ne doit pas bouger sans régénérer
-                          XWEB_THEME_SCRIPT_HASH (xweb/security.py,
-                          tests/test_security.py).
-    xweb.shell_minimal  — page complète SANS navigation, contenu étroit et
-                          centré : écrans d'auth (plugins/account), erreurs
-                          avant connexion. Ne pas réutiliser pour autre
-                          chose que ce type d'écran — la largeur bridée
-                          (max-w-md) casserait toute mise en page plus large.
-    xweb.marketing_layout — page complète SANS le chrome applicatif (pas de
-                          sidebar/ribbon/palette — ce n'est pas encore "dans
-                          l'appli"), mais SANS le plafond de largeur de
-                          shell_minimal : bandeau + pied de page, contenu
-                          pleine largeur laissé à la page. Utilisé par la
-                          landing page ("/", templates/landing.xml, montée
-                          depuis main.py — voir integration.yaml, aucun
-                          plugin ne peut servir "/" lui-même).
-    xweb.theme_toggle   — bouton clair/sombre, _hyperscript vérifié pour de
-                          vrai (scripts/verify-hyperscript.mjs).
-    xweb.locale_switcher — liens de langue (docs/i18n.md). Contrairement au
-                          thème (choix client, localStorage), la traduction
-                          se décide AU RENDU côté serveur — chaque lien est
-                          une vraie navigation vers ?lang=<code>, jamais un
-                          toggle _hyperscript. Invisible tant qu'une seule
-                          locale existe (xweb/mount.py::_resolve_translator
-                          replie sur ["fr"] sans catalogue configuré).
--->
 <templates>
 
-<template t-name="xweb.shell_head">
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title><t t-esc="page_title"/></title>
-    <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';document.documentElement.dataset.sidebar = localStorage.getItem('sidebar') || 'expanded';</script>
-    <link rel="icon" href="data:,"/>
-    <link rel="stylesheet" href="/xweb-static/app.css"/>
-    <script src="/xweb-static/htmx.min.js"></script>
-    <script src="/xweb-static/_hyperscript.min.js"></script>
-    <!-- xweb/static/storage.js — wrapper localStorage pour du code NEUF
-         (préférences d'affichage propres à un plugin). N'est PAS utilisé
-         par le thème/sidebar ci-dessus, voir la docstring du fichier. -->
-    <script src="/xweb-static/storage.js"></script>
-</template>
+    <!--
+        xweb.shell_head — assets communs.
 
-<template t-name="xweb.sidebar_toggle">
-    <t t-set="extra_class" t-default="''"/>
-    <!-- Repli/dépli de la sidebar en desktop uniquement (hidden lg:inline-flex
-         — sur mobile, c'est déjà un tiroir superposé, replier n'a pas de
-         sens). Même mécanique que xweb.theme_toggle : un data-attribut sur
-         <html>, persisté en localStorage, relu par le script anti-flash de
-         xweb.shell_head AVANT le premier rendu (sinon un flash de sidebar
-         dépliée précéderait le repli, le temps que ce bouton s'exécute). -->
-    <button type="button" aria-label="Replier/déplier le panneau de navigation" title="Replier/déplier le panneau"
-            t-attf-class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex {{extra_class}}"
-            _="on click
-                 if document.documentElement.dataset.sidebar is 'collapsed' set document.documentElement.dataset.sidebar to 'expanded'
-                 else set document.documentElement.dataset.sidebar to 'collapsed'
-               end
-               then call localStorage.setItem('sidebar', document.documentElement.dataset.sidebar)">
-        <t t-call="xweb.icon" name="chevron_left" extra_class="size-4 sidebar-expanded-only"/>
-        <t t-call="xweb.icon" name="chevron_right" extra_class="size-4 sidebar-collapsed-only"/>
-    </button>
-</template>
+        Important :
+        Le script de thème/sidebar doit rester le premier <script> inline
+        du document : son contenu est couvert par XWEB_THEME_SCRIPT_HASH.
+    -->
+    <template t-name="xweb.shell_head">
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title><t t-esc="page_title"/></title>
 
-<template t-name="xweb.theme_toggle">
-    <t t-set="id" t-default="'theme-btn'"/>
-    <t t-set="extra_class" t-default="''"/>
-    <button type="button" t-att-id="id" aria-label="Basculer le thème" title="Thème clair / sombre"
-            t-attf-class="btn btn-ghost btn-square btn-sm {{extra_class}}"
-            _="on click
-                 if document.documentElement.dataset.theme is 'dark' set document.documentElement.dataset.theme to 'light'
-                 else set document.documentElement.dataset.theme to 'dark'
-               end
-               then call localStorage.setItem('theme', document.documentElement.dataset.theme)">
-        <t t-call="xweb.icon" name="moon" extra_class="size-5 theme-light-only"/>
-        <t t-call="xweb.icon" name="sun" extra_class="size-5 theme-dark-only"/>
-    </button>
-</template>
+        <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';document.documentElement.dataset.sidebar = localStorage.getItem('sidebar') || 'expanded';</script>
 
-<template t-name="xweb.locale_switcher">
-    <t t-set="locale" t-default="'fr'"/>
-    <t t-set="locales" t-default="['fr']"/>
-    <!-- t-default ne rattrape que l'ABSENCE totale du prop, jamais un
-         t-att-locales="locales" du site appelant qui résout à None quand
-         SON PROPRE contexte n'a pas encore locale/locales (composition
-         t-call, docs/language.md#t-call) — "locales and locales[1:]" pour
-         ne jamais planter sur un contexte incomplet plutôt que juste sur
-         un contexte absent. -->
-    <t t-if="locales and locales[1:]">
-        <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-ghost btn-sm px-2 font-mono uppercase" aria-label="Choisir la langue">
-                <t t-esc="locale"/>
+        <link rel="icon" href="data:,"/>
+        <link rel="stylesheet" href="/xweb-static/app.css"/>
+        <script src="/xweb-static/htmx.min.js"></script>
+        <script src="/xweb-static/_hyperscript.min.js"></script>
+        <script src="/xweb-static/storage.js"></script>
+    </template>
+
+
+    <!--
+        xweb.topbar_slot
+
+        Slot extensible pour injecter des fragments serveur dans les barres
+        supérieures, sans faire connaître les plugins au layout xweb.
+
+        Exemples de composants injectables :
+        - xnotifications.bell
+        - xsearch.topbar_button
+        - xchat.inbox_button
+        - xpresence.team_indicator
+        - xhelp.topbar_link
+
+        topbar_content doit être du HTML déjà rendu par le serveur, jamais
+        une valeur utilisateur brute. t-out est volontaire : ce slot rend
+        un fragment de composant, pas du texte.
+    -->
+    <template t-name="xweb.topbar_slot">
+        <t t-set="content" t-default="''"/>
+
+        <t t-if="content">
+            <div class="xweb-topbar-slot flex items-center gap-1">
+                <t t-out="content"/>
             </div>
-            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-28 p-2 shadow-lg border border-base-300">
-                <t t-foreach="locales" t-as="code">
-                    <li>
-                        <a t-att-href="request.url.include_query_params(lang=code)" t-attf-class="font-mono uppercase {{ 'menu-active' if code == locale else '' }}">
-                            <t t-esc="code"/>
+        </t>
+    </template>
+
+
+    <!-- Toggle sidebar desktop -->
+    <template t-name="xweb.sidebar_toggle">
+        <t t-set="extra_class" t-default="''"/>
+
+        <button type="button"
+                aria-label="Replier ou déplier le panneau de navigation"
+                title="Replier ou déplier le panneau"
+                t-attf-class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex text-base-content/60 hover:text-base-content hover:bg-base-content/5 {{extra_class}}"
+                _="on click
+                     if document.documentElement.dataset.sidebar is 'collapsed'
+                       set document.documentElement.dataset.sidebar to 'expanded'
+                     else
+                       set document.documentElement.dataset.sidebar to 'collapsed'
+                     end
+                     then call localStorage.setItem('sidebar', document.documentElement.dataset.sidebar)">
+
+            <t t-call="xweb.icon"
+               name="chevron_left"
+               extra_class="size-4 sidebar-expanded-only"/>
+
+            <t t-call="xweb.icon"
+               name="chevron_right"
+               extra_class="size-4 sidebar-collapsed-only"/>
+        </button>
+    </template>
+
+
+    <!-- Toggle clair/sombre -->
+    <template t-name="xweb.theme_toggle">
+        <t t-set="id" t-default="'theme-btn'"/>
+        <t t-set="extra_class" t-default="''"/>
+
+        <button type="button"
+                t-att-id="id"
+                aria-label="Basculer le thème"
+                title="Thème clair ou sombre"
+                t-attf-class="btn btn-ghost btn-square btn-sm text-base-content/60 hover:text-base-content hover:bg-base-content/5 {{extra_class}}"
+                _="on click
+                     if document.documentElement.dataset.theme is 'dark'
+                       set document.documentElement.dataset.theme to 'light'
+                     else
+                       set document.documentElement.dataset.theme to 'dark'
+                     end
+                     then call localStorage.setItem('theme', document.documentElement.dataset.theme)">
+
+            <t t-call="xweb.icon"
+               name="moon"
+               extra_class="size-4.5 theme-light-only"/>
+
+            <t t-call="xweb.icon"
+               name="sun"
+               extra_class="size-4.5 theme-dark-only"/>
+        </button>
+    </template>
+
+
+    <!-- Sélecteur de langue : navigation serveur, aucune mutation client -->
+    <template t-name="xweb.locale_switcher">
+        <t t-set="locale" t-default="'fr'"/>
+        <t t-set="locales" t-default="['fr']"/>
+        <t t-set="labels" t-default="{}"/>
+
+        <t t-if="locales and locales[1:]">
+            <div class="dropdown dropdown-end">
+                <div tabindex="0"
+                     role="button"
+                     class="btn btn-ghost btn-sm px-2 font-mono text-xs uppercase text-base-content/60 hover:text-base-content hover:bg-base-content/5"
+                     aria-label="Choisir la langue">
+                    <t t-esc="labels.get(locale, locale)"/>
+                    <t t-call="xweb.icon"
+                       name="chevron_down"
+                       extra_class="size-3.5 opacity-60"/>
+                </div>
+
+                <ul tabindex="0"
+                    class="dropdown-content menu bg-base-100 rounded-lg z-40 w-32 p-1.5 mt-1 shadow-sm border border-base-content/10">
+                    <t t-foreach="locales" t-as="code">
+                        <li>
+                            <a t-att-href="request.url.include_query_params(lang=code)"
+                               t-attf-class="font-mono text-xs uppercase rounded-md {{ 'menu-active' if code == locale else '' }}">
+                                <t t-esc="labels.get(code, code)"/>
+                            </a>
+                        </li>
+                    </t>
+                </ul>
+            </div>
+        </t>
+    </template>
+
+
+    <!--
+        Shell minimal :
+        Authentification, pages d'erreur ou écrans non connectés.
+
+        topbar_content est accepté pour garder le contrat de layout
+        homogène, mais ne fournis normalement pas de cloche de notification
+        sur les écrans login, inscription ou mot de passe oublié.
+    -->
+    <template t-name="xweb.shell_minimal">
+        <t t-set="topbar_content" t-default="''"/>
+
+        <html>
+            <head>
+                <t t-call="xweb.shell_head"
+                   t-att-page_title="page_title"/>
+            </head>
+
+            <body class="min-h-screen bg-base-100 text-base-content flex flex-col">
+                <header class="shell-minimal-header flex items-center min-h-14 px-4 sm:px-6">
+                    <a href="/"
+                       class="flex items-center gap-2 text-sm font-semibold tracking-tight text-base-content">
+                        <span class="inline-flex items-center justify-center size-7 rounded-md bg-primary text-primary-content">
+                            <t t-call="xweb.icon"
+                               name="sparkles"
+                               extra_class="size-4"/>
+                        </span>
+                        <t t-esc="app_name"/>
+                    </a>
+
+                    <span class="flex-1"></span>
+
+                    <div class="flex items-center gap-1">
+                        <!-- Slot plugin : vide dans la plupart des pages auth. -->
+                        <t t-call="xweb.topbar_slot"
+                           t-att-content="topbar_content"/>
+
+                        <t t-call="xweb.locale_switcher"
+                           t-att-locale="locale"
+                           t-att-locales="locales"
+                           t-att-request="request"/>
+
+                        <t t-call="xweb.theme_toggle"/>
+                    </div>
+                </header>
+
+                <main class="flex-1 flex items-start sm:items-center justify-center px-4 py-10 sm:py-16">
+                    <div class="w-full max-w-md">
+                        <t t-out="content"/>
+                    </div>
+                </main>
+
+                <footer class="px-4 py-5 text-center text-xs text-base-content/45">
+                    <t t-esc="app_name"/>
+                </footer>
+
+                <!-- Région globale : utilisée par les réponses HTMX OOB. -->
+                <t t-call="xweb.toast_region"/>
+            </body>
+        </html>
+    </template>
+
+
+    <!--
+        Layout marketing :
+        Pas de sidebar/ribbon/palette applicative.
+        Pleine largeur pour la landing page et les pages publiques.
+
+        topbar_content est rendu avant les contrôles xweb natifs :
+        [ composants plugins ] [ langue ] [ thème ] [ compte ]
+    -->
+    <template t-name="xweb.marketing_layout">
+        <t t-set="topbar_content" t-default="''"/>
+        <t t-set="demo_path" t-default="None"/>
+
+        <html>
+            <head>
+                <t t-call="xweb.shell_head"
+                   t-att-page_title="page_title"/>
+            </head>
+
+            <body class="min-h-screen bg-base-100 text-base-content flex flex-col">
+                <header class="marketing-header sticky top-0 z-30 w-full border-b border-base-content/8 bg-base-100/90 backdrop-blur">
+                    <div class="mx-auto flex min-h-14 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
+                        <a href="/"
+                           class="flex items-center gap-2 text-sm font-semibold tracking-tight shrink-0">
+                            <span class="inline-flex items-center justify-center size-7 rounded-md bg-primary text-primary-content">
+                                <t t-call="xweb.icon"
+                                   name="sparkles"
+                                   extra_class="size-4"/>
+                            </span>
+                            <t t-esc="app_name"/>
                         </a>
-                    </li>
-                </t>
-            </ul>
-        </div>
-    </t>
-</template>
 
-<template t-name="xweb.shell_minimal">
-<html>
-<head><t t-call="xweb.shell_head" t-att-page_title="page_title"/></head>
-<body class="min-h-screen bg-base-200 text-base-content flex flex-col">
-    <header class="navbar min-h-12 px-4">
-        <a href="/" class="text-lg font-semibold tracking-tight"><t t-esc="app_name"/></a>
-        <span class="flex-1"></span>
-        <t t-call="xweb.locale_switcher" t-att-locale="locale" t-att-locales="locales" t-att-request="request"/>
-        <t t-call="xweb.theme_toggle"/>
-    </header>
-    <main class="flex-1 flex items-start sm:items-center justify-center p-4 pb-12">
-        <div class="w-full max-w-md"><t t-out="content"/></div>
-    </main>
-    <footer class="py-4 text-center text-xs opacity-60"><t t-esc="app_name"/></footer>
-</body>
-</html>
-</template>
+                        <span class="flex-1"></span>
 
-<template t-name="xweb.marketing_layout">
-<html>
-<head><t t-call="xweb.shell_head" t-att-page_title="page_title"/></head>
-<body class="min-h-screen bg-base-100 text-base-content flex flex-col">
-    <header class="navbar px-4 sm:px-6 lg:px-8 border-b border-base-300 gap-2">
-        <a href="/" class="flex items-center gap-2 text-lg font-semibold shrink-0">
-            <t t-call="xweb.icon" name="sparkles" extra_class="size-5 text-primary"/>
-            <t t-esc="app_name"/>
-        </a>
-        <span class="flex-1"></span>
-        <nav class="hidden sm:flex items-center">
-            <a t-attf-href="{{plugin_prefix}}/demo/" class="btn btn-ghost btn-sm" t-tr="1">Démo</a>
-        </nav>
-        <t t-call="xweb.locale_switcher" t-att-locale="locale" t-att-locales="locales" t-att-request="request"/>
-        <t t-call="xweb.theme_toggle"/>
-        <t t-if="user">
-            <a t-att-href="account_path" class="btn btn-primary btn-sm gap-2">
-                <t t-call="xweb.avatar" t-att-initial="account['initial']" size="xs"/>
-                <span class="hidden sm:inline">Mon compte</span>
-            </a>
-        </t>
-        <t t-else="1">
-            <a t-att-href="login_url" class="btn btn-primary btn-sm">Se connecter</a>
-        </t>
-    </header>
-    <main class="flex-1"><t t-out="content"/></main>
-    <footer class="border-t border-base-300 px-4 sm:px-6 lg:px-8 py-6 text-sm opacity-60 flex flex-wrap items-center justify-between gap-2">
-        <span><t t-esc="app_name"/></span>
-        <span>Propulsé par xweb + xcore</span>
-    </footer>
-</body>
-</html>
-</template>
+                        <t t-if="demo_path">
+                            <nav class="hidden sm:flex items-center mr-1">
+                                <a t-att-href="demo_path"
+                                   class="btn btn-ghost btn-sm font-normal text-base-content/70 hover:text-base-content hover:bg-base-content/5"
+                                   t-tr="1">
+                                    Démo
+                                </a>
+                            </nav>
+                        </t>
+
+                        <div class="flex items-center gap-1">
+                            <!--
+                                Slot top bar extensible.
+
+                                topbar_content est un fragment HTML rendu par
+                                le serveur : cloche de notification, recherche,
+                                statut, présence, aide, etc.
+                            -->
+                            <t t-call="xweb.topbar_slot"
+                               t-att-content="topbar_content"/>
+
+                            <t t-call="xweb.locale_switcher"
+                               t-att-locale="locale"
+                               t-att-locales="locales"
+                               t-att-request="request"/>
+
+                            <t t-call="xweb.theme_toggle"/>
+
+                            <t t-if="user">
+                                <a t-att-href="account_path"
+                                   class="btn btn-ghost btn-sm gap-2 ml-1 px-2 text-base-content/80 hover:text-base-content hover:bg-base-content/5">
+                                    <t t-call="xweb.avatar"
+                                       t-att-initial="account['initial']"
+                                       size="xs"/>
+                                    <span class="hidden md:inline">Mon compte</span>
+                                </a>
+                            </t>
+
+                            <t t-else="1">
+                                <a t-att-href="login_url"
+                                   class="btn btn-primary btn-sm ml-1 px-3 shadow-none">
+                                    Se connecter
+                                </a>
+                            </t>
+                        </div>
+                    </div>
+                </header>
+
+                <main class="flex-1">
+                    <t t-out="content"/>
+                </main>
+
+                <footer class="border-t border-base-content/8">
+                    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-base-content/50 sm:px-6 lg:px-8">
+                        <span>
+                            © <t t-esc="app_name"/>
+                        </span>
+
+                        <span>
+                            Propulsé par xweb + xcore
+                        </span>
+                    </div>
+                </footer>
+
+                <!-- Une seule région de toasts, en dehors du contenu page. -->
+                <t t-call="xweb.toast_region"/>
+            </body>
+        </html>
+    </template>
 
 </templates>

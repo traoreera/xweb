@@ -24,7 +24,7 @@
             <t t-esc="trigger_label"/>
         </button>
         <div t-attf-id="{{id}}-panel"
-             t-attf-class="popover-panel dropdown-content menu bg-base-100 rounded-box z-40 w-64 p-3 shadow-lg border border-base-300 absolute {{ 'top-full mt-2' if position == 'bottom' else 'bottom-full mb-2' }} {{extra_class}}"
+             t-attf-class="popover-panel dropdown-content menu bg-base-100 rounded-box z-40 w-64 p-3 shadow-sm border border-base-300 absolute {{ 'top-full mt-2' if position == 'bottom' else 'bottom-full mb-2' }} {{extra_class}}"
              _="on click from elsewhere remove .popover-open from me
                 on keyup[key=='Escape'] from the document remove .popover-open from me">
             <t t-out="slot"/>

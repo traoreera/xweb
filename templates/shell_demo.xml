@@ -1,0 +1,50 @@
+<!--
+    Démo de xweb.shell — /shell (main.py), lien "Démo" de la topbar de
+    xweb.marketing_layout (demo_path="/shell"). Rendu DANS xweb.shell
+    (docs/shell.md) : sidebar avec l'arbre de nav, palette Ctrl+K, status
+    bar, zone de toasts — tout ce que la landing (xweb.marketing_layout) ne
+    montre pas. La nav/les commandes/la status bar visibles ici sont
+    enregistrées une seule fois dans main.py (lifespan(), pas par requête)
+    avec plugin="site", même schéma qu'un vrai on_load() de plugin —
+    ce projet n'a plus de plugins/ (voir le commentaire de lifespan()),
+    donc sans ça le shell rendrait "Aucun plugin n'a encore contribué de
+    navigation." et rien d'autre, invisible à évaluer.
+-->
+<template t-name="site.shell_demo">
+<div class="flex flex-col gap-6 max-w-4xl">
+
+    <div>
+        <h1 class="text-2xl font-bold" t-tr="1">Démo du shell</h1>
+        <p class="text-base-content/60 mt-1" t-tr="1">
+            Sidebar, palette de commandes (Ctrl+K), status bar — la nav ici vient
+            d'entrées enregistrées dans main.py, pas d'un vrai plugin (ce projet n'en a plus).
+        </p>
+    </div>
+
+    <t t-call="xweb.card">
+        <t t-set-slot="header">Essayez</t>
+        <ul class="list-disc list-inside text-sm text-base-content/80 space-y-1">
+            <li t-tr="1">Ctrl+K (ou le bouton "Rechercher…" de la topbar) ouvre la palette de commandes.</li>
+            <li t-tr="1">Repliez la sidebar avec le bouton à côté du logo (persisté en localStorage).</li>
+            <li t-tr="1">"Organisation" dans la sidebar est un groupe dépliable avec deux enfants.</li>
+        </ul>
+    </t>
+
+    <div id="membres">
+        <h2 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Membres</h2>
+        <div class="grid gap-4 sm:grid-cols-3">
+            <t t-call="xweb.stat" title="Membres" value="1" desc="Toi, en visite anonyme"/>
+            <t t-call="xweb.stat" title="Rôles" value="0" desc="Aucun plugin d'auth chargé"/>
+            <t t-call="xweb.stat" title="Statut" value="Démo" desc="État en mémoire, non persisté"/>
+        </div>
+    </div>
+
+    <div id="securite">
+        <h2 class="text-sm font-semibold uppercase tracking-wide opacity-60 mb-3" t-tr="1">Sécurité</h2>
+        <t t-call="xweb.alert" variant="info">
+            <t t-tr="1">Cette section n'apparaît dans la sidebar que pour un utilisateur connecté (permission=AUTHENTICATED sur la Contribution, docs/shell.md) — normal de ne pas la voir dans "Organisation" tant que rien n'est connecté ici.</t>
+        </t>
+    </div>
+
+</div>
+</template>

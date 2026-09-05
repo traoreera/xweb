@@ -4,19 +4,34 @@
     <t t-set="title" t-default="''"/>
     <t t-set="subheading" t-default="''"/>
     <t t-set="header" t-default="''"/>
+    <!-- slot_header : équivalent composé de la prop header ci-dessus —
+         header="..." reste une chaîne/expression littérale (t-call ne
+         supporte pas de markup QWeb imbriqué dans une prop, docs/language.md
+         #t-call) ; <t t-set-slot="header">...</t> dans le corps du t-call
+         permet de composer <xweb.icon>+<xweb.badge>+texte sans vue Python
+         dédiée pour pré-construire ce HTML (know/features/composable-header-slot.md).
+         slot_header prime si les deux sont fournis. -->
+    <t t-set="slot_header" t-default="None"/>
     <t t-set="extra_class" t-default="''"/>
+    <!-- variant="raised" gardait shadow-sm à l'origine — le tell "SaaS-card
+         kit" (frontend-design skill) : chaque carte de la page identique,
+         flottant sur une ombre grise peu importe son contenu. Retiré :
+         "raised" ne se distingue plus de "outline" que par un fond
+         (bg-base-100) plus opaque, jamais un flottement — bordure fine
+         partout, comme xweb.kanban_card/editable_table (même langage). -->
     <t t-set="variant_class"
-       t-value="'bg-base-100 shadow-sm border border-base-200' if variant == 'raised' else 'card-border bg-base-100'"/>
+       t-value="'bg-base-100 border border-base-200' if variant == 'raised' else 'card-border bg-base-100'"/>
     <t t-set="padding_class"
        t-value="{'none': '', 'xs': 'p-2', 'sm': 'p-4', 'md': 'p-6', 'lg': 'p-8', 'xl': 'p-10', '2xl': 'p-12'}[padding]"/>
-    <t t-if="title or subheading or header">
+    <t t-if="title or subheading or header or slot_header">
         <div t-attf-class="card rounded-box {{variant_class}} {{extra_class}}">
             <div class="px-6 py-4 border-b border-base-200">
                 <t t-if="title"><h3 class="card-title"><t t-esc="title"/></h3></t>
                 <t t-if="subheading">
                     <p t-attf-class="text-sm opacity-70 {{ 'mt-0.5' if title else '' }}"><t t-esc="subheading"/></p>
                 </t>
-                <t t-if="header"><t t-out="header"/></t>
+                <t t-if="slot_header"><t t-out="slot_header"/></t>
+                <t t-elif="header"><t t-out="header"/></t>
             </div>
             <div t-attf-class="{{padding_class}}"><t t-out="slot"/></div>
         </div>

@@ -1,0 +1,48 @@
+<!--
+    xweb.popup — menu contextuel (clic droit), positionné aux coordonnées
+    du curseur — pas ancré à un élément fixe comme xweb.dropdown/xweb.popover
+    (docs/components.md#overlays). Réutilise la mécanique CSS de
+    xweb.popover (.popover-panel/.popover-open, xweb/static/xweb.css) —
+    seul le déclencheur change : `contextmenu` + `halt the event`
+    (supprime le menu natif du navigateur) au lieu d'un clic sur un
+    bouton. `halt the event` posé sur la ZONE elle-même, jamais sur
+    `document` : un clic droit ailleurs sur la page garde le menu natif
+    du navigateur disponible — vérifié en jsdom contre le vrai
+    _hyperscript.min.js vendorisé (scripts/verify-hyperscript.mjs).
+
+    Deux slots, comme xweb.indicator (slot / slot_badge) :
+      slot      : la zone qui déclenche le menu au clic droit (une ligne
+                  de tableau, une carte kanban, n'importe quel contenu).
+      slot_menu : le contenu du menu (`<li><a>…</a></li>`, même idiome que
+                  xweb.dropdown/xweb.menu) — nommé, jamais échappé (HTML
+                  de confiance, docs/language.md#t-call).
+
+    Props :
+      id          : identifiant DOM unique — requis si plusieurs instances
+                    sur une page (même contrat que xweb.modal/drawer/popover)
+      width       : classe Tailwind littérale, largeur du panneau
+      extra_class : classes supplémentaires sur le conteneur de la zone
+
+    Ferme sur clic extérieur ou Escape — même mécanique que xweb.popover,
+    jamais de fermeture automatique au clic sur un item du menu (délibéré,
+    même choix que xweb.popover : l'action de l'item décide elle-même de
+    ce qui se passe ensuite, ce composant ne présume rien).
+-->
+<template t-name="xweb.popup">
+    <t t-set="id" t-default="'xweb-popup'"/>
+    <t t-set="width" t-default="'w-56'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="{{extra_class}}"
+         t-attf-_="on contextmenu halt the event
+                    then set #{{id}}-panel's style.left to (event.clientX + 'px')
+                    then set #{{id}}-panel's style.top to (event.clientY + 'px')
+                    then add .popover-open to #{{id}}-panel">
+        <t t-out="slot"/>
+    </div>
+    <ul t-att-id="id + '-panel'"
+        t-attf-class="popover-panel fixed menu bg-base-100 rounded-box z-40 {{width}} p-2 shadow-sm border border-base-300"
+        _="on click from elsewhere remove .popover-open from me
+           on keyup[key=='Escape'] from the document remove .popover-open from me">
+        <t t-out="slot_menu"/>
+    </ul>
+</template>

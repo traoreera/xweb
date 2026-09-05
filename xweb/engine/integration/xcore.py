@@ -144,7 +144,10 @@ class XwebExtension(BaseService):
         for plugin_name, path in self._config.get("namespaces", {}).items():
             self.engine.register_dir(Path(path), source_plugin=plugin_name)
 
-        self.i18n = Catalog(self._config.get("locales_dir"), list(self._config.get("locales", [])))
+        self.i18n = Catalog(
+            self._config.get("locales_dir"), list(self._config.get("locales", [])),
+            source_locale=self._config.get("source_locale", "fr"),
+        )
 
         # Résout tout maintenant — les conflits xpath (docs/inheritance.md#conflits)
         # atterrissent dans le log de boot, pas seulement sur la première page

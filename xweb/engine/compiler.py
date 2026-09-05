@@ -130,7 +130,16 @@ class Compiler:
 
     def render(self, template_el: "etree._Element", ctx: dict) -> Markup:
         buf: list[str] = []
-        self._render_children(template_el, dict(ctx), buf)
+        root_ctx = dict(ctx)
+        # `_` par défaut = identité si absent — même filet que t-tr
+        # (ctx.get("_"), jamais d'exception) plutôt que l'asymétrie
+        # d'origine : `_('texte')` est une expression normale pour _eval,
+        # donc un `_` manquant faisait échouer TOUTE l'expression qui le
+        # contient (NameError -> None) — catastrophique dans un t-foreach
+        # (une section entière disparaît), pas juste ce seul appel.
+        # know/features/underscore-safe-default-in-expressions.md.
+        root_ctx.setdefault("_", lambda s: s)
+        self._render_children(template_el, root_ctx, buf)
         return Markup("".join(buf))
 
     # ------------------------------------------------------------------
@@ -138,7 +147,14 @@ class Compiler:
     # ------------------------------------------------------------------
 
     def _render_children(self, parent_el: "etree._Element", ctx: dict, buf: list[str]) -> None:
-        children = list(parent_el)
+        self._render_child_list(list(parent_el), ctx, buf)
+
+    def _render_child_list(self, children: list, ctx: dict, buf: list[str]) -> None:
+        """Coeur de _render_children, pris une liste déjà filtrée plutôt
+        que parent_el directement — _render_call() l'utilise pour rendre
+        le slot par défaut une fois les enfants t-set-slot extraits à
+        part (voir plus bas), sans avoir à construire un faux élément
+        lxml juste pour list(parent_el)."""
         i, n = 0, len(children)
         while i < n:
             el = children[i]
@@ -299,18 +315,76 @@ class Compiler:
         # is otherwise isolated (only explicit props below + slot), same
         # boundary django-cotton-ui's {% uivars %} components already
         # drew for the components xui ported (docs/language.md#t-call).
+        #
+        # Slots nommés : un enfant direct <t t-set-slot="nom">...</t> est
+        # extrait à part plutôt que de rejoindre le slot par défaut — rendu
+        # dans le contexte de l'appelant comme le slot par défaut, exposé
+        # côté cible sous slot_<nom>. Permet à un composant composite
+        # (ex. xweb.card) d'accepter plusieurs points d'injection sans
+        # obliger l'appelant à pré-construire le HTML dans une vue Python
+        # (know/features/composable-header-slot.md). Un enfant t-set-slot
+        # ne contribue JAMAIS au slot par défaut — pas de mélange partiel.
+        #
+        # `flow` : la suite ordonnée de ce qui va dans le slot par défaut —
+        # soit un GROUPE d'éléments consécutifs (list, passé tel quel à
+        # _render_child_list pour garder le groupement t-if/t-elif/t-else
+        # au sein d'un groupe), soit du texte déjà échappé (str) — le
+        # `.tail` XML d'un enfant t-set-slot retiré de la liste (le texte
+        # juste après ce nœud, ex. "Contenu" dans
+        # "<t t-set-slot=...>...</t>Contenu") appartient au flux par
+        # défaut, pas au slot nommé lui-même ; le perdre ferait disparaître
+        # tout texte immédiatement collé après un slot nommé.
+        named_slots: dict[str, Markup] = {}
+        flow: list = []
+        current_run: list = []
+        for child in el:
+            slot_name = child.get("t-set-slot") if isinstance(child.tag, str) else None
+            if slot_name:
+                if current_run:
+                    flow.append(current_run)
+                    current_run = []
+                named_buf: list[str] = []
+                if child.text:
+                    named_buf.append(str(escape(child.text)))
+                self._render_children(child, dict(ctx), named_buf)
+                named_slots[slot_name] = Markup("".join(named_buf))
+                if child.tail:
+                    flow.append(str(escape(child.tail)))
+            else:
+                current_run.append(child)
+        if current_run:
+            flow.append(current_run)
+
         slot_buf: list[str] = []
         if el.text:
             slot_buf.append(str(escape(el.text)))
-        self._render_children(el, dict(ctx), slot_buf)
+        for item in flow:
+            if isinstance(item, str):
+                slot_buf.append(item)
+            else:
+                self._render_child_list(item, dict(ctx), slot_buf)
 
         call_ctx: dict = {}
         for name, value in el.attrib.items():
             if name.startswith("t-att-"):
                 call_ctx[name[len("t-att-"):].replace("-", "_")] = _eval(value, ctx)
+            elif name.startswith("t-attf-"):
+                # Même sémantique que t-attf-* sur un élément normal
+                # (interpolation {{...}} d'une chaîne littérale), mais SANS
+                # l'échappement HTML appliqué ensuite pour un attribut réel
+                # (_render_attrs) — une prop de t-call est une valeur Python
+                # brute comme t-att-*, jamais du HTML sérialisé ; l'échappement
+                # reste la responsabilité de la cible à son propre t-esc/t-att-*.
+                # Avant ce correctif, t-attf-* sur un t-call était reconnu par
+                # aucune branche ci-dessous et disparaissait silencieusement,
+                # sans erreur (know/features/t-call-needs-interpolated-prop-syntax.md).
+                if name != "t-attf-slot":  # "slot" reste réservé au contenu, jamais une prop
+                    call_ctx[name[len("t-attf-"):].replace("-", "_")] = _eval_formatted(value, ctx)
             elif not name.startswith("t-"):
                 call_ctx[name.replace("-", "_")] = value
         call_ctx["slot"] = Markup("".join(slot_buf))
+        for slot_name, content in named_slots.items():
+            call_ctx[f"slot_{slot_name}"] = content
 
         target_el = self.registry.get(target)
         if target_el is None:

@@ -70,6 +70,16 @@ def test_boosted_navigation_to_the_landing_page_forces_a_real_navigation(monkeyp
     assert r.text == ""
 
 
-def test_cta_link_to_the_demo_plugin_is_present(monkeypatch):
+def test_cta_link_points_to_the_real_component_catalogue_not_a_dead_demo_plugin(monkeypatch):
+    """Avant ce correctif : liens codés en dur vers plugin_prefix + '/demo/'
+    (know/features/marketing-layout-hardcoded-links.md) — un 404 tant
+    qu'aucun plugin demo n'existe (main.py, jamais le cas depuis la
+    remise à zéro de plugins/). #composants (templates/components_showcase.xml)
+    est la vraie démo en direct sur cette même page."""
     html = TestClient(make_app(monkeypatch)).get("/").text
-    assert html.count('href="/app/demo/"') >= 2  # nav du bandeau + au moins un CTA
+    assert html.count('href="#composants"') >= 2  # au moins deux CTA
+    # "/demo/" seul matcherait aussi les vraies routes de la démo
+    # xweb.editable_table (/demo/table/cell, .../row...) — légitimes,
+    # sans rapport avec le lien mort corrigé ici.
+    assert 'href="/app/demo/"' not in html
+    assert "plugin_prefix + '/demo/'" not in html

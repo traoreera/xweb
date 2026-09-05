@@ -1,0 +1,34 @@
+<!--
+    xweb.swap — bascule visuelle entre deux états (icône hamburger/X, par
+    exemple), DaisyUI natif (.swap, checkbox cachée + sélecteur CSS
+    :checked, zéro JS pour l'animation elle-même). Si la bascule doit
+    aussi déclencher autre chose (un thème, une requête htmx), poser
+    hx-*/_ sur le <label> — ce composant ne fait que l'animation visuelle,
+    jamais lui-même une action.
+
+    Props :
+      name    : name du checkbox (utile seulement si ce swap doit être
+                soumis dans un vrai <form>, sinon laissez vide)
+      checked : bool, état initial (True = affiche slot_on)
+      flip    : bool, True par défaut — anime en "retournement" (swap-flip,
+                DaisyUI) ; False = changement instantané (aucune classe
+                d'animation, comportement par défaut de .swap seul)
+      extra_class : classes supplémentaires sur le <label>
+
+    slot_on / slot_off : contenu de chaque état (t-set-slot="on"/"off",
+    voir docs/language.md#t-set-slot) — jamais échappés (contrat slot
+    standard), typiquement deux xweb.icon.
+-->
+<template t-name="xweb.swap">
+    <t t-set="name" t-default="''"/>
+    <t t-set="checked" t-default="False"/>
+    <t t-set="flip" t-default="True"/>
+    <t t-set="slot_on" t-default="None"/>
+    <t t-set="slot_off" t-default="None"/>
+    <t t-set="extra_class" t-default="''"/>
+    <label t-attf-class="swap {{ 'swap-flip' if flip else '' }} {{extra_class}}">
+        <input type="checkbox" t-att-name="name or None" t-att-checked="checked"/>
+        <div class="swap-on"><t t-out="slot_on"/></div>
+        <div class="swap-off"><t t-out="slot_off"/></div>
+    </label>
+</template>

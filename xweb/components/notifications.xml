@@ -1,0 +1,250 @@
+<templates>
+
+    <!--
+        Conteneur fixe des notifications éphémères.
+
+        À placer une seule fois dans chaque layout complet, juste avant
+        </body>. Les réponses HTMX peuvent cibler ce conteneur via
+        hx-swap-oob="beforeend:#xweb-toasts".
+    -->
+    <template t-name="xweb.toast_region">
+        <div id="xweb-toasts"
+             class="toast toast-top toast-end z-50 pointer-events-none">
+        </div>
+    </template>
+
+
+    <!--
+        Toast réutilisable, saveur "notification" (titre + message +
+        niveau) — délibérément un template séparé de xweb.toast
+        (xweb/components/toast.xml, saveur "slot" : variant + contenu
+        libre). Les deux coexistent, chacun avec ses propres appelants,
+        pas un remplacement de l'autre. Renommé xweb.notification_toast
+        après une vraie collision de t-name trouvée par
+        tests/test_component_registry.py (register_dir scanne par ordre
+        alphabétique -> toast.xml re-régistrait xweb.toast en écrasant
+        silencieusement celui-ci ; l'app ne s'en apercevait pas
+        aujourd'hui seulement par chance d'ordre alphabétique).
+
+        Props :
+          id           : identifiant DOM unique, recommandé
+          title        : titre court
+          message      : détail facultatif
+          level        : info | success | warning | error
+          dismiss_after: délai _hyperscript, ex. "5s"; '' désactive l'auto-close
+    -->
+    <template t-name="xweb.notification_toast">
+        <t t-set="id" t-default="'xweb-toast'"/>
+        <t t-set="title" t-default="''"/>
+        <t t-set="message" t-default="''"/>
+        <t t-set="level" t-default="'info'"/>
+        <t t-set="dismiss_after" t-default="'5s'"/>
+
+        <div t-att-id="id"
+             t-attf-class="alert shadow-lg pointer-events-auto max-w-sm {{ 'alert-success' if level == 'success' else '' }}{{ 'alert-warning' if level == 'warning' else '' }}{{ 'alert-error' if level == 'error' else '' }}{{ 'alert-info' if level == 'info' else '' }}"
+             t-att-_="('on load wait ' + dismiss_after + ' then remove me') if dismiss_after else None">
+
+            <t t-if="level == 'success'">
+                <t t-call="xweb.icon" name="check_circle" extra_class="size-5"/>
+            </t>
+            <t t-elif="level == 'warning'">
+                <t t-call="xweb.icon" name="warning" extra_class="size-5"/>
+            </t>
+            <t t-elif="level == 'error'">
+                <t t-call="xweb.icon" name="error" extra_class="size-5"/>
+            </t>
+            <t t-else="1">
+                <t t-call="xweb.icon" name="info" extra_class="size-5"/>
+            </t>
+
+            <div class="min-w-0">
+                <t t-if="title">
+                    <div class="text-sm font-medium">
+                        <t t-esc="title"/>
+                    </div>
+                </t>
+
+                <t t-if="message">
+                    <div class="mt-0.5 text-xs opacity-75">
+                        <t t-esc="message"/>
+                    </div>
+                </t>
+            </div>
+
+            <button type="button"
+                    class="btn btn-ghost btn-xs btn-square shrink-0"
+                    aria-label="Fermer"
+                    _="on click remove closest .alert">
+                <t t-call="xweb.icon" name="x" extra_class="size-4"/>
+            </button>
+        </div>
+    </template>
+
+
+    <!--
+        Bouton cloche.
+
+        Props :
+          unread_count      : nombre de notifications non lues
+          notifications_url : endpoint qui retourne xweb.notification_panel
+    -->
+    <template t-name="xweb.notification_bell">
+        <t t-set="unread_count" t-default="0"/>
+        <t t-set="notifications_url" t-default="''"/>
+
+        <div class="dropdown dropdown-end">
+            <button type="button"
+                    tabindex="0"
+                    aria-label="Notifications"
+                    title="Notifications"
+                    class="btn btn-ghost btn-square btn-sm relative text-base-content/60 hover:text-base-content hover:bg-base-content/5"
+                    t-att-hx-get="notifications_url or None"
+                    hx-target="#xweb-notification-panel"
+                    hx-swap="outerHTML">
+
+                <t t-call="xweb.icon" name="bell" extra_class="size-4.5"/>
+
+                <t t-if="unread_count">
+                    <span class="absolute right-1 top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-content">
+                        <t t-if="unread_count &gt; 99">99+</t>
+                        <t t-else="1"><t t-esc="unread_count"/></t>
+                    </span>
+                </t>
+            </button>
+
+            <!-- Placeholder stable : remplacé au premier clic HTMX. -->
+            <div id="xweb-notification-panel"
+                 class="dropdown-content z-40 mt-2 w-80 rounded-lg border border-base-content/10 bg-base-100 p-1 shadow-xl">
+                <div class="px-3 py-5 text-center text-xs text-base-content/50">
+                    Cliquez pour afficher les notifications.
+                </div>
+            </div>
+        </div>
+    </template>
+
+
+    <!--
+        Panneau dropdown de notifications.
+
+        Props :
+          notifications : [{
+              id,
+              title,
+              message?,
+              href?,
+              icon?,         # icon xweb.optionnel
+              level?,        # info | success | warning | error
+              read?,         # bool
+              created_label? # ex. "Il y a 12 min"
+          }]
+          unread_count
+          mark_all_read_url : POST optionnel
+          mark_read_url     : POST base optionnelle, appelée sur /{id}
+          inbox_url         : lien optionnel vers l'inbox complète
+
+        Cet élément doit toujours garder id="xweb-notification-panel", car
+        xweb.notification_bell le cible avec hx-target.
+    -->
+    <template t-name="xweb.notification_panel">
+        <t t-set="notifications" t-default="[]"/>
+        <t t-set="unread_count" t-default="0"/>
+        <t t-set="mark_all_read_url" t-default="''"/>
+        <t t-set="mark_read_url" t-default="''"/>
+        <t t-set="inbox_url" t-default="''"/>
+
+        <div id="xweb-notification-panel"
+             class="dropdown-content z-40 mt-2 w-80 overflow-hidden rounded-lg border border-base-content/10 bg-base-100 shadow-xl">
+
+            <div class="flex min-h-11 items-center justify-between border-b border-base-content/8 px-3">
+                <div class="text-sm font-semibold">
+                    Notifications
+                </div>
+
+                <t t-if="unread_count and mark_all_read_url">
+                    <button type="button"
+                            class="btn btn-ghost btn-xs text-base-content/60 hover:text-base-content"
+                            t-att-hx-post="mark_all_read_url"
+                            hx-target="#xweb-notification-panel"
+                            hx-swap="outerHTML">
+                        Tout lire
+                    </button>
+                </t>
+            </div>
+
+            <div class="max-h-96 overflow-y-auto">
+                <t t-if="notifications">
+                    <t t-foreach="notifications" t-as="notification">
+                        <t t-set="is_read" t-value="notification.get('read', False)"/>
+                        <t t-set="href" t-value="notification.get('href') or '#'"/>
+                        <t t-set="icon_name" t-value="notification.get('icon') or 'bell'"/>
+                        <t t-set="level" t-value="notification.get('level') or 'info'"/>
+
+                        <!-- notification['id'], jamais str(notification['id']) : str()
+                             est un builtin Python, absent du contexte d'évaluation QWeb
+                             (CLAUDE.md "aucun builtin") -> NameError avalé en None,
+                             hx-post silencieusement jamais émis, "marquer comme lu" mort
+                             au clic sans la moindre erreur visible. Trouvé en testant
+                             (tests/test_notifications.py). Les ids sont déjà des chaînes
+                             côté vue Python (landing_data.py) — pas besoin de coercion. -->
+                        <a t-att-href="href"
+                           t-attf-class="group flex gap-3 px-3 py-3 transition-colors hover:bg-base-content/4 {{ 'bg-primary/5' if not is_read else '' }}"
+                           t-att-hx-post="(mark_read_url + '/' + notification['id']) if (mark_read_url and not is_read) else None"
+                           hx-swap="none">
+
+                            <span t-attf-class="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md {{ 'bg-success/10 text-success' if level == 'success' else '' }}{{ 'bg-warning/10 text-warning' if level == 'warning' else '' }}{{ 'bg-error/10 text-error' if level == 'error' else '' }}{{ 'bg-info/10 text-info' if level == 'info' else '' }}">
+                                <t t-call="xweb.icon"
+                                   t-att-name="icon_name"
+                                   extra_class="size-4"/>
+                            </span>
+
+                            <span class="min-w-0 flex-1">
+                                <span t-attf-class="block text-sm leading-5 {{ 'font-medium' if not is_read else '' }}">
+                                    <t t-esc="notification.get('title', '')"/>
+                                </span>
+
+                                <t t-if="notification.get('message')">
+                                    <span class="mt-0.5 block truncate text-xs text-base-content/55">
+                                        <t t-esc="notification['message']"/>
+                                    </span>
+                                </t>
+
+                                <t t-if="notification.get('created_label')">
+                                    <span class="mt-1 block text-[11px] text-base-content/40">
+                                        <t t-esc="notification['created_label']"/>
+                                    </span>
+                                </t>
+                            </span>
+
+                            <t t-if="not is_read">
+                                <span class="mt-2 size-1.5 shrink-0 rounded-full bg-primary"></span>
+                            </t>
+                        </a>
+                    </t>
+                </t>
+
+                <t t-else="1">
+                    <div class="flex flex-col items-center px-5 py-10 text-center">
+                        <span class="mb-3 flex size-10 items-center justify-center rounded-full bg-base-200 text-base-content/45">
+                            <t t-call="xweb.icon" name="bell" extra_class="size-5"/>
+                        </span>
+                        <div class="text-sm font-medium">Tout est à jour</div>
+                        <div class="mt-1 text-xs text-base-content/50">
+                            Vous n’avez aucune notification.
+                        </div>
+                    </div>
+                </t>
+            </div>
+
+            <t t-if="inbox_url">
+                <a t-att-href="inbox_url"
+                   class="flex min-h-10 items-center justify-center border-t border-base-content/8 text-xs font-medium text-base-content/60 hover:bg-base-content/4 hover:text-base-content">
+                    Voir toutes les notifications
+                    <t t-call="xweb.icon"
+                       name="chevron_right"
+                       extra_class="ml-1 size-3.5"/>
+                </a>
+            </t>
+        </div>
+    </template>
+
+</templates>

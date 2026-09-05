@@ -1,0 +1,40 @@
+<!--
+    xweb.carousel — défilement d'images (DaisyUI natif, .carousel/
+    .carousel-item, scroll-snap CSS pur, zéro JS). Navigation prev/next
+    par ancres <a href="#id-N"> (scroll natif du navigateur vers l'élément
+    ciblé) — pas de bouton "actif" qui se met à jour tout seul, comportement
+    natif du défilement, pas une limite de ce composant.
+
+    Props :
+      id    : requis si show_nav — préfixe des ancres #{{id}}-item-N
+      items : [{src, alt?}]
+      show_nav : bool, ajoute les flèches précédent/suivant sur chaque slide
+      extra_class : classes supplémentaires sur le conteneur
+-->
+<template t-name="xweb.carousel">
+    <t t-set="id" t-default="'xweb-carousel'"/>
+    <t t-set="items" t-default="[]"/>
+    <t t-set="show_nav" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <!-- count calculé une fois, à plat (t-value au top-level, pas imbriqué
+         dans une expression plus large) : "items | length" ne serait
+         JAMAIS reconnu comme un filtre s'il apparaissait entre parenthèses
+         plus bas (split_filters ne coupe qu'à profondeur 0 de parenthèses,
+         CLAUDE.md/xweb/engine/filters.py) — le "|" y redeviendrait
+         l'opérateur Python bitwise-or, "length" un nom indéfini, et
+         l'expression entière retomberait en None silencieusement. -->
+    <t t-set="count" t-value="items | length"/>
+    <div t-attf-class="carousel w-full rounded-box {{extra_class}}">
+        <t t-foreach="items" t-as="item">
+            <div t-attf-id="{{id}}-item-{{item_index}}" class="carousel-item relative w-full">
+                <img t-att-src="item['src']" t-attf-alt="{{item.get('alt', '')}}" class="w-full object-cover"/>
+                <t t-if="show_nav">
+                    <div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 justify-between">
+                        <a t-attf-href="#{{id}}-item-{{ (item_index - 1) % count }}" class="btn btn-circle btn-sm">❮</a>
+                        <a t-attf-href="#{{id}}-item-{{ (item_index + 1) % count }}" class="btn btn-circle btn-sm">❯</a>
+                    </div>
+                </t>
+            </div>
+        </t>
+    </div>
+</template>

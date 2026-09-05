@@ -1,0 +1,39 @@
+<!--
+    xweb.mockup — cadre de présentation (navigateur/fenêtre/téléphone),
+    DaisyUI natif (.mockup-browser/.mockup-window/.mockup-phone). Les
+    trois points colorés viennent d'un ::before CSS pur (aucun markup à
+    fournir pour eux) — usage marketing/documentation, jamais une vraie
+    fenêtre interactive.
+
+    Props :
+      variant : "browser" | "window" | "phone" — "browser" par défaut
+      url     : barre d'adresse affichée (variant="browser" seulement,
+                ignorée sinon)
+      extra_class : classes supplémentaires
+    slot : le contenu encadré (une image pour "phone", n'importe quel HTML
+           pour "browser"/"window")
+-->
+<template t-name="xweb.mockup">
+    <t t-set="variant" t-default="'browser'"/>
+    <t t-set="url" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <t t-if="variant == 'phone'">
+        <div t-attf-class="mockup-phone {{extra_class}}">
+            <div class="mockup-phone-camera"></div>
+            <div class="mockup-phone-display"><t t-out="slot"/></div>
+        </div>
+    </t>
+    <t t-elif="variant == 'window'">
+        <div t-attf-class="mockup-window border border-base-300 {{extra_class}}">
+            <div class="border-t border-base-300"><t t-out="slot"/></div>
+        </div>
+    </t>
+    <t t-else="1">
+        <div t-attf-class="mockup-browser border border-base-300 {{extra_class}}">
+            <div class="mockup-browser-toolbar">
+                <t t-if="url"><div class="input input-sm"><t t-esc="url"/></div></t>
+            </div>
+            <div class="border-t border-base-300"><t t-out="slot"/></div>
+        </div>
+    </t>
+</template>

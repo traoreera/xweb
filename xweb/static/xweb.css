@@ -1,0 +1,343 @@
+/* xweb.css — partage Tailwind de xweb, à `@import`-er depuis le fichier
+   d'entrée Tailwind d'un projet qui CONSOMME xweb comme paquet installé
+   (pip/uv), pas comme ce monorepo. Contient uniquement ce qui est
+   INTRINSÈQUE aux composants xweb — jamais une couleur de marque, jamais
+   un `@source` vers les templates d'un projet consommateur (ça, c'est à
+   CHAQUE projet de le déclarer chez lui, voir docs/theming.md#build).
+
+   Pourquoi ce fichier existe : `xweb/static/app.css` (compilé, vendorisé,
+   servi en prod) n'est PAS reconstructible tel quel — c'est une sortie
+   Tailwind figée avec les couleurs de marque de xcore-integration. Un
+   projet qui installe `xweb` comme dépendance (au lieu de développer dans
+   ce monorepo) a besoin de reconstruire SA PROPRE sortie avec SES propres
+   couleurs de thème, tout en récupérant gratuitement ce que les composants
+   xweb exigent pour fonctionner correctement — sans le redécouvrir à la
+   main projet par projet (ce qui a déjà causé de vrais bugs silencieux
+   dans CE dépôt : classes DaisyUI interpolées jamais générées, mécanique
+   CSS de xweb.popover/xweb.theme_toggle/xweb.sidebar_toggle absente).
+
+   Portabilité : les chemins `@source` ci-dessous sont relatifs à CE
+   fichier (Tailwind v4 résout `@source` par rapport au fichier où il est
+   déclaré, pas par rapport au fichier qui fait le `@import`) — donc
+   `@import ".../xweb/static/xweb.css";` depuis n'importe quel projet,
+   à n'importe quelle profondeur, retrouve toujours xweb/components/ au
+   bon endroit. Vérifié en le faisant tourner pour de vrai dans ce dépôt
+   (assets/app.css l'importe exactement comme le ferait un consommateur
+   externe) — voir docs/theming.md#build. */
+
+@source "../components/**/*.xml";
+
+/* Sécurité anti-scan — classes DaisyUI composées à l'exécution (Python,
+   t-attf-class/t-value dans les composants : xweb.button, xweb.badge,
+   xweb.alert, xweb.toggle, xweb.radio, xweb.range, xweb.select,
+   xweb.textarea, xweb.spinner, xweb.stat, xweb.tabs, xweb.menu, xweb.kbd,
+   xweb.dropdown, xweb.table, xweb.editable_table, xweb.kanban…). Le
+   scanner de contenu de Tailwind v4 lit le texte SOURCE des .xml, jamais
+   le résultat d'une interpolation ("btn-{{variant}}", ou 'text-'+color
+   côté Python) — une classe qui n'apparaît nulle part sous sa forme
+   littérale complète n'est tout simplement jamais générée. `@source
+   inline()` force la génération de tout le produit couleurs × tailles
+   pour chaque composant concerné, indépendamment de ce qu'un plugin
+   appelant passe réellement comme prop. Vit ici (pas dans le assets/
+   app.css d'un projet consommateur) parce que c'est une exigence des
+   composants xweb eux-mêmes, pas de la marque d'un projet donné —
+   qui l'oublierait dans son propre fichier reproduirait exactement les
+   bugs déjà trouvés dans ce dépôt (toggle-primary/select-md/textarea-md/
+   range-primary manquants, point coloré de xweb.editable_table_cell_select
+   invisible). */
+@source inline("{btn,badge,alert,radio,toggle,range,select,textarea,input,loading,tabs,menu,kbd,table}-{primary,secondary,accent,neutral,info,success,warning,error}");
+@source inline("{btn,badge,input,select,textarea,radio,toggle,range,loading,tabs,menu,kbd,table}-{xs,sm,md,lg,xl}");
+@source inline("text-{primary,secondary,accent,neutral,info,success,warning,error,white,current}");
+@source inline("bg-{primary,secondary,accent,neutral,info,success,warning,error}");
+@source inline("tabs-{border,box,lift}");
+@source inline("dropdown-{top,bottom,left,right,center,start,end}");
+
+/* Mécanique requise par certains composants xweb pour fonctionner — pas de
+   la décoration, une dépendance. Sans ces règles : xweb.theme_toggle
+   n'aurait aucune icône visible dans aucun thème (les deux resteraient
+   affichées en même temps), xweb.popover resterait toujours ouvert
+   (aucune classe Tailwind "hidden"/toggle ne peut résoudre proprement la
+   spécificité contre .popover-panel elle-même), et xweb.sidebar_toggle
+   n'aurait aucun effet visuel au clic. */
+@layer components {
+  /* xweb.theme_toggle (xweb/components/layout.xml) — DaisyUI thème via
+     data-theme sur <html> (docs/theming.md), pas de classe .dark : un
+     simple sélecteur d'attribut suffit, aucune variante Tailwind avec `&`
+     (qu'il faudrait écrire &amp; dans du XML, invisible au scanner de
+     classes). */
+  .theme-dark-only {
+    display: none;
+  }
+
+  [data-theme="dark"] .theme-dark-only {
+    display: inline-block;
+  }
+
+  [data-theme="dark"] .theme-light-only {
+    display: none;
+  }
+
+  /* xweb.popover (xweb/components/popover.xml) — masqué par défaut,
+     affiché en ajoutant .popover-open (_hyperscript). Pas de classe
+     Tailwind "hidden"/toggle : la classe .popover-open doit gagner sur
+     .popover-panel elle-même, une histoire de spécificité CSS qu'un
+     couple de classes utilitaires seules ne résout pas proprement. */
+  .popover-panel {
+    display: none;
+  }
+
+  .popover-panel.popover-open {
+    display: block;
+  }
+
+  /* xweb.sidebar_toggle (xweb/components/layout.xml) — repli desktop de
+     #xweb-sidebar en rail d'icônes. data-sidebar sur <html>, même
+     mécanique que data-theme (persisté en localStorage, relu par le
+     script anti-flash AVANT le premier rendu — docs/shell.md).
+
+     !important nécessaire sur LES DEUX règles ci-dessous — corrigé après
+     un premier essai faux : je pensais que #xweb-sidebar (id) l'emportait
+     sur .w-60 (classe Tailwind) par spécificité CSS normale, sans
+     !important. C'était une intuition non vérifiée. Un vrai test en
+     navigateur réel (Playwright + Chromium, getComputedStyle — jsdom ne
+     calcule pas la cascade Tailwind v4, voir docs/theming.md#build) a
+     montré data-sidebar passait bien à "collapsed" et .sidebar-label
+     passait bien à display:none, MAIS la largeur de #xweb-sidebar restait
+     bloquée à 240px (celle de .w-60) — cette règle perdait malgré son id.
+     Tailwind v4 émet ses classes dans de vraies @layer CSS (theme, base,
+     components, utilities) même après --minify ; une couche déclarée
+     PLUS TARD bat toujours une couche plus tôt, quelle que soit la
+     spécificité — "utilities" (où vit .w-60) passe après "components" (où
+     vit ce fichier, importé via @layer components dans assets/app.css).
+     Seul !important échappe à cette priorité de couche. */
+  [data-sidebar="collapsed"] #xweb-sidebar {
+    width: 4rem !important;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-label {
+    display: none !important;
+  }
+
+  .sidebar-collapsed-only {
+    display: none;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-collapsed-only {
+    display: inline-block;
+  }
+
+  [data-sidebar="collapsed"] .sidebar-expanded-only {
+    display: none;
+  }
+}
+
+/* xweb.editable_table — identité visuelle par défaut, pas une surcharge
+   locale à un projet. Vivait dans assets/app.css de xcore-integration
+   (jamais livré avec le paquet xweb) jusqu'à ce que ce soit reconnu comme
+   un vrai manque : un projet qui installe xweb comme paquet et utilise
+   xweb.editable_table récupérait des classes DaisyUI/Tailwind par défaut
+   (bordures de <table> natives, focus bleu générique) au lieu du rendu
+   "grille façon Notion" que le composant prétend offrir dans sa propre
+   docstring. Volontairement HORS de tout @layer (contrairement au bloc
+   ci-dessus) : ces règles n'ont jamais eu besoin de gagner contre une
+   classe Tailwind concurrente sur les mêmes éléments, un @layer
+   components les ferait perdre inutilement face à @layer utilities
+   (priorité de couche, pas de spécificité — voir le commentaire sur la
+   sidebar plus haut) sans aucun bénéfice en retour. */
+.editable-table table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.editable-table th {
+  border: none !important;
+  background: transparent !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.editable-table td {
+  border: none !important;
+  padding: 0 !important;
+}
+
+.editable-table tr {
+  border: none !important;
+}
+
+.editable-table tbody tr:hover {
+  background-color: oklch(var(--bc) / 0.02);
+}
+
+.editable-table tr.border-t-2 {
+  border-top-color: oklch(var(--p)) !important;
+}
+
+.editable-table input.input-ghost:focus {
+  outline: none;
+  box-shadow: none;
+  background-color: oklch(var(--bc) / 0.03);
+}
+
+.editable-table .dropdown-content {
+  margin-top: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px oklch(var(--bc) / 0.1);
+}
+
+.editable-table .dropdown-content li a {
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+}
+
+.editable-table .dropdown-content li a:hover {
+  background-color: oklch(var(--bc) / 0.04);
+}
+
+/* xweb.kanban — même raisonnement : panneaux plats séparés par des filets
+   fins, une liste dense de cartes plutôt que des cartes flottantes, un
+   seul geste voyant (filet d'accent à gauche au survol d'une carte).
+   Généralisé depuis un bloc auparavant scopé à ".kanban-demo-surface"
+   (une classe de présentation propre à la page de démo d'un projet, pas
+   à xweb.kanban lui-même) — cette identité s'applique maintenant partout
+   où xweb.kanban est utilisé, pas seulement sur une page qui pose ce
+   wrapper précis. Là encore HORS de @layer : ".kanban-card:hover"
+   doit gagner contre les utilitaires "hover:border-..." et "hover:bg-..."
+   posés sur le même élément dans xweb/components/kanban.xml (spécificité égale,
+   sans la protection non-layered ça perdrait silencieusement face à
+   @layer utilities — vérifié en écrivant ce commentaire, pas supposé). */
+.kanban {
+  padding: 8px 4px;
+}
+
+.kanban-column {
+  background: transparent !important;
+  border: 0;
+  border-right: 1px solid oklch(var(--bc) / 0.09);
+  border-radius: 0;
+  width: 264px;
+  min-height: 0;
+  padding: 0 20px 4px 0;
+  margin-right: 20px;
+  gap: 1px;
+}
+
+.kanban-column:last-child {
+  border-right: 0;
+  margin-right: 0;
+  padding-right: 0;
+}
+
+.kanban-column-header {
+  user-select: none;
+}
+
+/* Ligne de séparation sous le header (xweb/components/kanban.xml,
+   <div class="h-px bg-base-content/[0.06]">) — hauteur/couleur déjà des
+   utilitaires Tailwind posés directement dans le composant, seule la
+   transition au survol vit ici. */
+.kanban-column .h-px {
+  transition: background-color 150ms ease;
+}
+
+.kanban-column:hover .h-px {
+  background-color: oklch(var(--bc) / 0.1);
+}
+
+.kanban-column-title {
+  padding: 0 0 7px;
+  margin-bottom: 7px;
+  border-bottom: 1px solid oklch(var(--bc) / 0.09);
+  color: oklch(var(--bc) / 0.7);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.kanban-cards {
+  gap: 1px;
+  min-height: 48px;
+}
+
+.kanban-card {
+  min-height: 0;
+  padding: 7px 8px 7px 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid oklch(var(--bc) / 0.055);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none !important;
+  transition: border-left-color 120ms ease, background-color 120ms ease;
+}
+
+.kanban-cards > .kanban-card:last-child {
+  border-bottom: 0;
+}
+
+.kanban-card:hover {
+  border-left-color: var(--color-primary);
+  background: oklch(var(--bc) / 0.03);
+  box-shadow: none;
+  transform: none;
+}
+
+.kanban-card:active {
+  transform: none;
+  background: oklch(var(--bc) / 0.05);
+}
+
+.kanban-card > div:first-child {
+  color: oklch(var(--bc) / 0.85);
+  font-size: 0.8rem;
+  font-weight: 450;
+  line-height: 1.3;
+}
+
+.kanban-card .text-xs {
+  margin-top: 1px;
+  color: oklch(var(--bc) / 0.45);
+  font-size: 0.7rem;
+}
+
+.kanban-card .badge {
+  border-radius: 4px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.drag-handle {
+  flex-shrink: 0;
+}
+
+.kanban-column > .btn,
+.kanban-cards > .btn {
+  justify-content: flex-start;
+  min-height: 26px;
+  margin-top: 4px;
+  padding: 4px 2px;
+  border-radius: 4px;
+  color: oklch(var(--bc) / 0.38);
+  font-size: 0.76rem;
+}
+
+.kanban-column > .btn:hover,
+.kanban-cards > .btn:hover {
+  color: oklch(var(--bc) / 0.75);
+  background: oklch(var(--bc) / 0.05);
+}
+
+.kanban::-webkit-scrollbar {
+  height: 5px;
+}
+
+.kanban::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: oklch(var(--bc) / 0.14);
+}

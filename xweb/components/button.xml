@@ -1,4 +1,14 @@
 <template t-name="xweb.button">
+    <!-- t-default, comme card/badge/stat et le reste du catalogue —
+        absent jusqu'ici (know/features/button-missing-defaults.md) :
+        variant/size non fournis levaient un NameError capturé par
+        _eval (nom absent -> None), classe "btn btn-None btn-None"
+        plutôt qu'un bouton par défaut raisonnable. type="button" par
+        défaut aussi — pas "submit" implicite du navigateur, qui
+        soumettrait un formulaire englobant sans que ce soit demandé. -->
+    <t t-set="variant" t-default="'primary'"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="type" t-default="'button'"/>
     <t t-if="href">
         <a t-att-href="href" t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}">
             <t t-out="slot"/>

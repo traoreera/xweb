@@ -1,0 +1,24 @@
+<!--
+    xweb.skeleton — placeholder de chargement (DaisyUI natif, .skeleton :
+    un fond qui pulse doucement en CSS pur, zéro JS). Pensé pour htmx :
+    posé dans un fragment que hx-indicator révèle, remplacé au htmx:
+    afterSwap par le contenu réel — jamais lui-même une cible hx-*.
+
+    Props :
+      width/height : classes Tailwind LITTÉRALES fournies par l'appelant
+                     (ex. width="w-32" height="h-4") — apparaissent dans le
+                     fichier .xml appelant, donc scannées normalement par
+                     Tailwind (CLAUDE.md : le scanner lit le texte source,
+                     jamais le résultat d'une interpolation — ici il n'y a
+                     justement pas d'interpolation, la classe est déjà
+                     littérale chez l'appelant)
+      circle       : bool — cercle plutôt que rectangle (avatar, icône)
+      extra_class  : classes supplémentaires
+-->
+<template t-name="xweb.skeleton">
+    <t t-set="width" t-default="'w-full'"/>
+    <t t-set="height" t-default="'h-4'"/>
+    <t t-set="circle" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="skeleton {{width}} {{height}} {{ 'rounded-full' if circle else '' }} {{extra_class}}"></div>
+</template>

@@ -2,7 +2,6 @@ plugins/
 extensions/
 locales/
 node_modules/
-scripts/
 conf/
 .venv/
 .env
@@ -17,3 +16,4 @@ CLAUDE.md
 site/
 dist/
 .verify-editable-table.html
+studio/

@@ -235,6 +235,7 @@ def render_xweb_template(
     login_path: str = DEFAULT_LOGIN_PATH,
     account_path: str = DEFAULT_ACCOUNT_PATH,
     logout_path: str = DEFAULT_LOGOUT_PATH,
+    demo_path: str | None = None,
     headers: dict[str, str] | None = None,
 ) -> Response:
     """Rend `template` dans son layout (voir docstring du module) — aussi
@@ -243,7 +244,14 @@ def render_xweb_template(
     (xweb.forms.parse_form) plutôt que rediriger.
 
     `extra["page_title"]` (posé par la vue) l'emporte sur `page_title` —
-    un titre dynamique ("Contact — Ada") sans rien changer au montage."""
+    un titre dynamique ("Contact — Ada") sans rien changer au montage.
+
+    `demo_path=None` par défaut, PAS de valeur calculée à partir de
+    plugin_prefix() comme login_path/account_path/logout_path —
+    contrairement à eux, "un plugin demo existe" n'est jamais garanti
+    (know/features/marketing-layout-hardcoded-links.md, le lien "Démo" de
+    xweb.marketing_layout était codé en dur sans condition). Un appelant
+    qui a réellement un plugin demo passe son chemin explicitement."""
     extra = dict(extra or {})
     title = _full_title(str(extra.get("page_title") or page_title or app_name), app_name)
 
@@ -254,6 +262,7 @@ def render_xweb_template(
         "login_path": login_path,
         "account_path": account_path,
         "logout_path": logout_path,
+        "demo_path": demo_path,
         "login_url": login_url(login_path, _request_path_with_query(request)),
     })
     ctx_dict.update(extra)
@@ -313,6 +322,7 @@ def mount_xweb_page(
     login_path: str = DEFAULT_LOGIN_PATH,
     account_path: str = DEFAULT_ACCOUNT_PATH,
     logout_path: str = DEFAULT_LOGOUT_PATH,
+    demo_path: str | None = None,
     use_shell: bool = True,
     layout: str | None = None,
     app_name: str = "xweb",
@@ -338,7 +348,7 @@ def mount_xweb_page(
 
     render_kw = dict(
         use_shell=use_shell, layout=layout, app_name=app_name, page_title=page_title,
-        login_path=login_path, account_path=account_path, logout_path=logout_path,
+        login_path=login_path, account_path=account_path, logout_path=logout_path, demo_path=demo_path,
     )
 
     @router.api_route(path, methods=["GET", "HEAD"], response_class=HTMLResponse, name=name)

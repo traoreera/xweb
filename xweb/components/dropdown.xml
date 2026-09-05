@@ -16,7 +16,7 @@
                 <t t-call="xweb.icon" name="chevron_down" extra_class="size-4 opacity-60"/>
             </t>
         </div>
-        <ul tabindex="0" t-attf-class="dropdown-content menu bg-base-100 rounded-box z-40 {{width}} p-2 shadow-lg border border-base-300">
+        <ul tabindex="0" t-attf-class="dropdown-content menu bg-base-100 rounded-box z-40 {{width}} p-2 shadow-sm border border-base-300">
             <t t-out="slot"/>
         </ul>
     </div>

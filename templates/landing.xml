@@ -44,7 +44,7 @@
             </p>
             <div class="flex flex-wrap items-center justify-center gap-3 mt-2">
                 <t t-if="user">
-                    <t t-call="xweb.button" variant="primary" size="lg" t-att-href="plugin_prefix + '/demo/'" extra_class="gap-2">
+                    <t t-call="xweb.button" variant="primary" size="lg" t-att-href="'#composants'" extra_class="gap-2">
                         <t t-call="xweb.icon" name="arrow_right" extra_class="size-5"/><t t-esc="_('Aller à la démo')"/>
                     </t>
                     <t t-call="xweb.button" variant="outline" size="lg" t-att-href="account_path" extra_class=""><t t-esc="_('Mon compte')"/></t>
@@ -53,7 +53,7 @@
                     <t t-call="xweb.button" variant="primary" size="lg" t-att-href="login_url" extra_class="gap-2">
                         <t t-call="xweb.icon" name="login" extra_class="size-5"/><t t-esc="_('Se connecter')"/>
                     </t>
-                    <t t-call="xweb.button" variant="outline" size="lg" t-att-href="plugin_prefix + '/demo/'" extra_class=""><t t-esc="_('Voir la démo sans compte')"/></t>
+                    <t t-call="xweb.button" variant="outline" size="lg" t-att-href="'#composants'" extra_class=""><t t-esc="_('Voir la démo sans compte')"/></t>
                 </t>
             </div>
             <t t-if="user">
@@ -155,7 +155,7 @@
                         <h2 class="text-xl font-semibold" t-tr="1">Prêt à explorer ?</h2>
                         <p class="opacity-90 text-sm mt-1" t-tr="1">La démo montre le shell, l'htmx et les composants en action.</p>
                     </div>
-                    <t t-call="xweb.button" variant="neutral" size="md" t-att-href="plugin_prefix + '/demo/'" extra_class="shrink-0"><t t-esc="_('Ouvrir la démo')"/></t>
+                    <t t-call="xweb.button" variant="neutral" size="md" t-att-href="'#composants'" extra_class="shrink-0"><t t-esc="_('Ouvrir la démo')"/></t>
                 </div>
             </t>
         </div>

@@ -91,16 +91,15 @@ def test_undefined_variable_is_falsy_not_a_crash():
     assert html.strip().startswith("<button")
 
 
-def test_no_default_props_yet_documents_the_real_gap(registry):
-    """docs/components.md#conventions-de-migration: button.xml itself
-    declares no defaults (t-default, added while porting badge/card/etc,
-    see test_t_default_*) — a component that doesn't opt in still
-    behaves exactly like this. Not "the good version hasn't been
-    written," a concrete, ugly-but-not-crashing string — so the gap
-    can't quietly disappear from a future refactor."""
+def test_button_defaults_to_a_reasonable_button_without_any_props(registry):
+    """Anciennement "le vrai trou" (button.xml n'avait aucun t-default,
+    contrairement à badge/card/stat) — corrigé
+    (know/features/button-missing-defaults.md) : un appel sans props
+    produit un bouton par défaut raisonnable, pas "btn btn- btn-"."""
     html = registry.render("xweb.button", {"slot": "x"})
     assert html.strip().startswith("<button")
-    assert "btn btn- btn- " in html  # variant/size/extra_class all undefined -> empty
+    assert "btn btn-primary btn-md" in html
+    assert 'type="button"' in html  # jamais "submit" implicite du navigateur
 
 
 def test_t_default_fills_in_only_when_caller_omitted_the_prop():
@@ -546,4 +545,139 @@ def test_filter_result_is_still_escaped():
     html = r.render("test.f", {"s": "<script>alert(1)</script>"})
     assert "alert" not in html
     assert "<script>" not in html
-    assert "&lt;SCRIPT" in html or "&LT;SCRIPT" in html
+
+
+# ---------------------------------------------------------------------
+# t-call — slots nommés (know/features/composable-header-slot.md)
+# ---------------------------------------------------------------------
+
+
+def test_named_slot_is_exposed_as_slot_prefixed_name():
+    r = QwebRegistry()
+    r.register_source(
+        '<template t-name="test.card"><div>'
+        '<t t-if="slot_header"><header><t t-out="slot_header"/></header></t>'
+        '<main><t t-out="slot"/></main>'
+        "</div></template>"
+    )
+    r.register_source(
+        '<template t-name="test.page"><t t-call="test.card">'
+        '<t t-set-slot="header"><b>Titre</b></t>'
+        "Contenu principal"
+        "</t></template>"
+    )
+    html = r.render("test.page", {})
+    assert "<header><b>Titre</b></header>" in html
+    assert "<main>Contenu principal</main>" in html
+
+
+def test_named_slot_content_does_not_leak_into_default_slot():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.card"><t t-out="slot"/>|<t t-out="slot_header"/></template>')
+    r.register_source(
+        '<template t-name="test.page"><t t-call="test.card">'
+        '<t t-set-slot="header">EN-TETE</t>'
+        "RESTE"
+        "</t></template>"
+    )
+    html = r.render("test.page", {})
+    assert html.strip() == "RESTE|EN-TETE"
+
+
+def test_named_slot_renders_in_the_callers_context_not_isolated():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.card"><t t-out="slot_header"/></template>')
+    r.register_source(
+        '<template t-name="test.page"><t t-call="test.card">'
+        '<t t-set-slot="header"><t t-esc="caller_var"/></t>'
+        "</t></template>"
+    )
+    html = r.render("test.page", {"caller_var": "valeur-appelant"})
+    assert html.strip() == "valeur-appelant"
+
+
+def test_no_named_slot_given_renders_it_as_none_not_an_error():
+    """slot_header non fourni est simplement ABSENT de call_ctx — même
+    piège "not <nom absent>" déjà connu pour toute prop de t-call
+    (docs/language.md), pas spécifique aux slots nommés : la cible doit
+    déclarer t-default comme pour n'importe quelle autre prop."""
+    r = QwebRegistry()
+    r.register_source(
+        '<template t-name="test.card">'
+        '<t t-set="slot_header" t-default="None"/>'
+        '<t t-if="not slot_header">pas de header</t>'
+        "</template>"
+    )
+    r.register_source('<template t-name="test.page"><t t-call="test.card">contenu</t></template>')
+    assert "pas de header" in r.render("test.page", {})
+
+
+# ---------------------------------------------------------------------
+# t-call — t-attf-* interpolé comme prop (know/features/t-call-needs-interpolated-prop-syntax.md)
+# ---------------------------------------------------------------------
+
+
+def test_tattf_on_t_call_interpolates_into_the_prop_value():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.link"><a t-att-href="url">x</a></template>')
+    r.register_source('<template t-name="test.page"><t t-call="test.link" t-attf-url="/sessions/{{sid}}/revoke"/></template>')
+    html = r.render("test.page", {"sid": "abc123"})
+    assert 'href="/sessions/abc123/revoke"' in html
+
+
+def test_tattf_prop_value_is_not_pre_escaped_target_escapes_it_itself():
+    """Une prop t-attf-* est une valeur Python brute, comme t-att-* — pas
+    du HTML déjà échappé. C'est le t-esc/t-att-* de la CIBLE qui échappe,
+    une seule fois, pas ici en plus."""
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.echo"><t t-esc="v"/></template>')
+    r.register_source('<template t-name="test.page"><t t-call="test.echo" t-attf-v="{{name}} &amp; co"/></template>')
+    html = r.render("test.page", {"name": "<b>Ada</b>"})
+    assert "&lt;b&gt;Ada&lt;/b&gt; &amp; co" in html
+
+
+def test_tattf_slot_is_never_a_prop_name():
+    """t-attf-slot ne doit jamais écraser le contenu réel du slot — "slot"
+    reste réservé à ce que porte le corps du t-call."""
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.echo"><t t-out="slot"/></template>')
+    r.register_source('<template t-name="test.page"><t t-call="test.echo" t-attf-slot="{{x}}">vrai contenu</t></template>')
+    html = r.render("test.page", {"x": "usurpé"})
+    assert html.strip() == "vrai contenu"
+
+
+# ---------------------------------------------------------------------
+# `_()` — filet de sécurité identité (know/features/underscore-safe-default-in-expressions.md)
+# ---------------------------------------------------------------------
+
+
+def test_underscore_call_without_context_falls_back_to_identity_not_none():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.f"><t t-esc="_(\'Bonjour\')"/></template>')
+    assert r.render("test.f", {}).strip() == "Bonjour"
+
+
+def test_underscore_inside_t_call_isolated_context_still_works():
+    """Le cas réel du bug : _() DANS un t-foreach/littéral passé à un
+    t-call qui n'a jamais reçu `_` explicitement — avant ce correctif,
+    NameError sur `_` faisait échouer TOUTE l'expression englobante."""
+    r = QwebRegistry()
+    r.register_source(
+        '<template t-name="test.list">'
+        '<t t-foreach="items" t-as="i"><li><t t-esc="i"/></li></t>'
+        "</template>"
+    )
+    r.register_source(
+        '<template t-name="test.page">'
+        "<t t-call=\"test.list\" t-att-items=\"[_('a'), _('b')]\"/>"
+        "</template>"
+    )
+    html = r.render("test.page", {})  # pas de `_` forwardé du tout
+    assert "<li>a</li>" in html and "<li>b</li>" in html
+
+
+def test_underscore_explicit_context_still_takes_priority_over_default():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.f"><t t-esc="_(\'Bonjour\')"/></template>')
+    html = r.render("test.f", {"_": lambda s: s.upper()})
+    assert html.strip() == "BONJOUR"

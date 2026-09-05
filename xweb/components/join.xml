@@ -1,0 +1,19 @@
+<!--
+    xweb.join — regroupe visuellement plusieurs éléments (boutons, champs)
+    en supprimant les coins/bordures internes (DaisyUI natif, .join/
+    .join-item, zéro JS, zéro logique). Un simple conteneur : chaque
+    enfant direct doit porter la classe "join-item" lui-même (ex.
+    t-call="xweb.button" extra_class="join-item") — ce composant ne
+    l'ajoute pas à sa place, il ne connaît pas la nature de ses enfants.
+
+    Props :
+      vertical    : bool — empile verticalement plutôt qu'horizontalement
+      extra_class : classes supplémentaires sur le conteneur
+-->
+<template t-name="xweb.join">
+    <t t-set="vertical" t-default="False"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="join {{ 'join-vertical' if vertical else '' }} {{extra_class}}">
+        <t t-out="slot"/>
+    </div>
+</template>

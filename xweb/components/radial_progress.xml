@@ -1,0 +1,31 @@
+<!--
+    xweb.radial_progress — jauge circulaire (DaisyUI natif, .radial-progress,
+    CSS pur, conic-gradient animé via une custom property, zéro JS, zéro
+    SVG). L'arc utilise currentColor : c'est la classe de couleur TEXTE
+    (color, pas color_class="bg-...") qui le teinte.
+
+    Props :
+      value    : 0-100
+      size     : longueur CSS littérale (ex. "5rem", "3rem") — passée telle
+                 quelle à l'anneau, pas une classe Tailwind
+      thickness : longueur CSS littérale, épaisseur de l'anneau (défaut :
+                  la valeur DaisyUI native — un dixième de la taille — si
+                  non fournie)
+      color    : classe de couleur TEXTE DaisyUI (text-primary par défaut)
+      extra_class : classes supplémentaires
+    slot : contenu au centre (le pourcentage par défaut si absent)
+-->
+<template t-name="xweb.radial_progress">
+    <t t-set="value" t-default="0"/>
+    <t t-set="size" t-default="'5rem'"/>
+    <t t-set="thickness" t-default="''"/>
+    <t t-set="color" t-default="'text-primary'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="radial-progress {{color}} {{extra_class}}"
+         t-attf-style="--value:{{value}}; --size:{{size}}; {{ '--thickness:' + thickness + ';' if thickness else '' }}"
+         role="progressbar"
+         t-attf-aria-valuenow="{{value}}">
+        <t t-if="slot"><t t-out="slot"/></t>
+        <t t-else="1"><t t-esc="value"/>%</t>
+    </div>
+</template>

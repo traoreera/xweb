@@ -1,0 +1,46 @@
+<!--
+    xweb.rating — étoiles (DaisyUI natif, .rating/.mask-star-2, radios
+    cachés). Étoiles entières uniquement (pas de demi-étoile) — hors
+    scope v1, voir xweb.editable_table_cell_select pour le même choix
+    "pas d'éditeur avancé en v1" ailleurs dans le catalogue.
+
+    Props :
+      name     : requis pour que les radios d'une même instance s'excluent
+                 mutuellement — deux instances sur une page doivent avoir
+                 des noms différents (comme n'importe quel groupe radio)
+      value    : note actuelle, 1..max (0 ou absent -> aucune étoile cochée)
+      max      : nombre d'étoiles, 5 par défaut
+      readonly : bool — désactive les radios (affichage seul, ex. note déjà
+                 soumise) ; l'ensemble reste un vrai groupe de radios, pas
+                 une ré-implémentation en <span> pour ce cas
+      size     : xs|sm|md|lg|xl (DaisyUI)
+      color    : classe DaisyUI de fond pour l'étoile pleine (bg-warning
+                 par défaut — le "orange-400" de la doc DaisyUI correspond
+                 déjà à la couleur d'alerte de la plupart des thèmes)
+-->
+<template t-name="xweb.rating">
+    <t t-set="name" t-default="'xweb-rating'"/>
+    <t t-set="value" t-default="0"/>
+    <t t-set="max" t-default="5"/>
+    <t t-set="readonly" t-default="False"/>
+    <t t-set="size" t-default="'md'"/>
+    <t t-set="color" t-default="'bg-warning'"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="rating rating-{{size}} {{extra_class}}">
+        <input type="radio" t-att-name="name" class="rating-hidden" t-att-disabled="readonly"/>
+        <!-- t-foreach="'x' * max" plutôt que range(1, max+1) : range() est
+             un builtin absent du contexte d'évaluation QWeb (CLAUDE.md,
+             tests/test_no_builtins_in_component_expressions.py) — 'x' * max
+             ne fait que répéter une chaîne (opérateur *, pas un appel de
+             fonction), donne un itérable de la bonne longueur, et
+             n_index (0-based, posé par le moteur lui-même en Python réel,
+             jamais par l'expression évaluée) donne le numéro d'étoile. -->
+        <t t-foreach="'x' * max" t-as="n">
+            <input type="radio" t-att-name="name"
+                   t-attf-class="mask mask-star-2 {{color}}"
+                   t-attf-aria-label="{{n_index + 1}} étoile{{ 's' if n_index &gt; 0 else '' }}"
+                   t-att-checked="(n_index + 1) == value"
+                   t-att-disabled="readonly"/>
+        </t>
+    </div>
+</template>

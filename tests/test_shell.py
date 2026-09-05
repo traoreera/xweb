@@ -84,7 +84,7 @@ def test_sidebar_toggle_and_labels_are_present_for_the_collapsed_desktop_mode(mo
     vérifiée pour de vrai dans scripts/verify-hyperscript.mjs."""
     html = TestClient(make_app(monkeypatch)).get("/").text
     assert "xweb.sidebar_toggle" not in html  # jamais le nom du template, juste son rendu
-    assert 'aria-label="Replier/déplier le panneau de navigation"' in html
+    assert 'aria-label="Replier ou déplier le panneau de navigation"' in html
     assert 'class="sidebar-label"' in html  # titre "Ma App" en tête de sidebar
 
 

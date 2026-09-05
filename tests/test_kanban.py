@@ -92,3 +92,47 @@ def test_kanban_with_no_columns_renders_an_empty_board_not_a_crash(registry):
     html = registry.render("xweb.kanban", {})
     assert "kanban" in html
     assert "kanban-column" not in html
+
+
+def test_kanban_column_card_count_is_rendered_via_the_length_filter(registry):
+    """len(...) est un builtin Python, invisible du contexte d'évaluation
+    QWeb (CLAUDE.md) -> NameError avalé en None, compteur toujours vide.
+    Régression : xweb/components/kanban.xml utilise `| length`, pas len()."""
+    html = registry.render("xweb.kanban", {
+        "columns": [{"id": "a", "title": "A", "cards": [{"id": "c1", "title": "x"}, {"id": "c2", "title": "y"}]}],
+    })
+    header = html.split("kanban-column-title")[1]
+    assert ">2<" in header or "2" in header.split("</span>")[0]
+
+
+# ── Bouton supprimer une carte ──────────────────────────────────────────────
+
+
+def test_kanban_card_delete_button_omitted_when_delete_card_url_is_empty(registry):
+    html = registry.render("xweb.kanban", {
+        "columns": [{"id": "a", "title": "A", "cards": [{"id": "c1", "title": "x"}]}],
+    })
+    assert "hx-delete" not in html
+    assert "Supprimer la carte" not in html
+
+
+def test_kanban_card_delete_button_targets_the_right_card_when_delete_card_url_given(registry):
+    html = registry.render("xweb.kanban", {
+        "columns": [{"id": "a", "title": "A", "cards": [{"id": "c1", "title": "x"}, {"id": "c2", "title": "y"}]}],
+        "delete_card_url": "/x/cards",
+    })
+    assert 'hx-delete="/x/cards/c1"' in html
+    assert 'hx-delete="/x/cards/c2"' in html
+    assert 'hx-target="closest .kanban-card"' in html
+    assert 'aria-label="Supprimer la carte"' in html
+
+
+def test_kanban_card_can_be_rendered_alone_as_a_fragment_with_delete_url(registry):
+    """xweb.kanban_card doit rester appelable seul (add_card_url rend ce
+    fragment), y compris avec son propre delete_url — même garantie que
+    xweb.editable_table_row."""
+    html = registry.render("xweb.kanban_card", {
+        "card": {"id": "c1", "title": "x"}, "delete_url": "/x/cards",
+    })
+    assert html.strip().startswith("<div")
+    assert 'hx-delete="/x/cards/c1"' in html

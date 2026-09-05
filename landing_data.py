@@ -170,3 +170,48 @@ def editable_table_rename_column(key: str, label: str) -> dict | None:
             col["label"] = label
             return col
     return None
+
+
+# ── Démo xweb.notification_bell / xweb.notification_panel ──────────────────
+# Câblée sur la topbar de la landing (main.py, xweb.marketing_layout ->
+# topbar_content, xweb.topbar_slot) — même état de module réel que la table
+# éditable ci-dessus, pas un mock. "read" mute en place, comme
+# editable_table_set_cell : pas d'id qui disparaît, jamais de KeyError sur
+# un id inconnu (course avec un autre onglet).
+_notifications: list[dict] = [
+    {
+        "id": "n-1", "title": "Nouveau look pour xweb.kanban", "read": False,
+        "message": "Colonnes à filets fins façon Obsidian, glisser-déposer natif.",
+        "level": "info", "created_label": "Il y a 5 min",
+    },
+    {
+        "id": "n-2", "title": "Export PDF du catalogue prêt", "read": False,
+        "message": "Même moteur QWeb que la page HTML — voir Système ci-dessous.",
+        "level": "success", "created_label": "Il y a 1 h",
+    },
+    {
+        "id": "n-3", "title": "La démo se réinitialise au redémarrage", "read": True,
+        "message": "landing_data.py garde un état en mémoire, pas persisté.",
+        "level": "warning", "created_label": "Hier",
+    },
+]
+
+
+def notifications_context() -> dict:
+    return {
+        "notifications": _notifications,
+        "unread_count": sum(1 for n in _notifications if not n["read"]),
+    }
+
+
+def mark_notification_read(notif_id: str) -> dict | None:
+    for n in _notifications:
+        if n["id"] == notif_id:
+            n["read"] = True
+            return n
+    return None
+
+
+def mark_all_notifications_read() -> None:
+    for n in _notifications:
+        n["read"] = True

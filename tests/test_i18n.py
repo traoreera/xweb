@@ -195,3 +195,52 @@ def test_unknown_lang_query_param_does_not_set_a_cookie(monkeypatch, tmp_path):
     r = client.get("/?lang=de")
     assert "Bonjour" in r.text  # replie sur le français
     assert LOCALE_COOKIE not in client.cookies
+
+
+# ---------------------------------------------------------------------
+# source_locale configurable (know/features/configurable-source-locale.md)
+# ---------------------------------------------------------------------
+
+
+def test_source_locale_defaults_to_fr_unchanged():
+    catalog = Catalog(None, [])
+    assert catalog.source_locale == "fr" == SOURCE_LOCALE
+    assert catalog.available == ["fr"]
+
+
+def test_source_locale_can_be_configured_to_another_code():
+    catalog = Catalog(None, ["fr"], source_locale="en")
+    assert catalog.source_locale == "en"
+    assert catalog.available[0] == "en"
+
+
+def test_source_locale_needs_no_catalog_file_identity_translator(tmp_path):
+    """Même garantie que pour "fr" par défaut : la locale source, quelle
+    qu'elle soit, n'a jamais besoin de fichier — _() y est l'identité."""
+    catalog = Catalog(str(tmp_path), [], source_locale="en")
+    translator = catalog.translator_for("en")
+    assert translator("Hello") == "Hello"
+
+
+def test_source_locale_listed_in_locales_warns_and_is_still_excluded_from_loading(tmp_path, caplog):
+    """Piège d'origine : locales=["fr", "en"] avec source_locale="fr"
+    filtrait "fr" silencieusement (aucun fr.json jamais chargé, aucune
+    indication). Toujours exclu du chargement — mais maintenant avec un
+    avertissement explicite plutôt qu'un silence total."""
+    import logging
+
+    (tmp_path / "fr.json").write_text('{"Bonjour": "ne devrait jamais être lu"}', encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="xweb.i18n"):
+        catalog = Catalog(str(tmp_path), ["fr", "en"], source_locale="fr")
+    assert any("source_locale" in r.message and "fr" in r.message for r in caplog.records)
+    assert "fr" not in catalog._tables  # jamais chargé, malgré le fichier présent
+
+
+def test_resolve_locale_falls_back_to_the_catalogs_configured_source_locale():
+    """Avant ce correctif, le repli final de resolve_locale lisait
+    toujours la CONSTANTE de module SOURCE_LOCALE ("fr" en dur) — un
+    projet à source_locale="en" serait quand même retombé sur "fr" ici,
+    malgré une config explicite différente."""
+    catalog = Catalog(None, [], source_locale="en")
+    request = make_request()  # aucun ?lang=, aucun cookie, aucun Accept-Language
+    assert resolve_locale(request, catalog) == "en"

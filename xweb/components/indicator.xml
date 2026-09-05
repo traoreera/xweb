@@ -1,0 +1,34 @@
+<!--
+    xweb.indicator — positionne un badge/point dans un coin d'un élément
+    (DaisyUI natif, .indicator/.indicator-item, zéro JS, zéro position
+    absolue écrite à la main). Généralise ce que xweb.kanban_card (bouton
+    supprimer) et xweb.notification_bell (badge de compteur) faisaient
+    chacun avec leur propre "absolute top-1.5 right-1.5" — même besoin,
+    pas encore de composant partagé avant celui-ci.
+
+    Props :
+      v (vertical)   : top|bottom|middle, "top" par défaut
+      h (horizontal) : start|end|center, "end" par défaut
+      extra_class    : classes supplémentaires sur le conteneur
+
+    slot        : l'élément principal (jamais échappé — même contrat que
+                  tout slot xweb : le contenu vient d'un autre appel
+                  xweb.*/HTML déjà de confiance, pas d'une donnée brute)
+    slot_badge  : le contenu du badge/point positionné (nommé, voir
+                  docs/language.md#t-set-slot) — absent -> aucun badge
+                  rendu, juste l'élément principal
+-->
+<template t-name="xweb.indicator">
+    <t t-set="v" t-default="'top'"/>
+    <t t-set="h" t-default="'end'"/>
+    <t t-set="slot_badge" t-default="None"/>
+    <t t-set="extra_class" t-default="''"/>
+    <div t-attf-class="indicator {{extra_class}}">
+        <t t-if="slot_badge">
+            <span t-attf-class="indicator-item indicator-{{v}} indicator-{{h}}">
+                <t t-out="slot_badge"/>
+            </span>
+        </t>
+        <t t-out="slot"/>
+    </div>
+</template>

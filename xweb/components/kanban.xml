@@ -1,74 +1,161 @@
-<!--
-    xweb.kanban — tableau à colonnes, cartes déplaçables en glisser-déposer
-    natif HTML5 (draggable="true" + dragstart/dragover/drop en _hyperscript,
-    aucune librairie externe — charger SortableJS/Alpine irait à l'encontre
-    du choix de xweb de n'avoir aucun bundle JS à charger, CLAUDE.md).
+<!-- xweb.kanban — version minimaliste style Notion/Obsidian, voir
+     docs/components.md#kanban et XWEB_KNOWLEDGE.md §11. Bugs réels trouvés
+     et corrigés en la redessinant : (1) `<template>` multiples doivent être
+     enveloppés dans un seul <templates>...</templates>, sinon le parseur
+     XML plante au boot avec "Extra content at the end of the document" ;
+     (2) `len(...)` est un builtin Python, absent du contexte d'évaluation
+     des expressions QWeb (CLAUDE.md) — NameError -> None silencieux, donc
+     le compteur de cartes restait toujours vide ; le filtre `| length`
+     existe justement pour ça ; (3) _hyperscript ne sait pas parser une
+     classe Tailwind à valeur arbitraire contenant un `/` (ex.
+     bg-base-content/[0.02]) dans un littéral `.classe` — erreur de parsing
+     qui invalide TOUT le bloc _="..." porté par l'élément, pas seulement
+     cette ligne (vérifié avec le vrai _hyperscript vendorisé en jsdom) ;
+     (4) `hx-vals="js:{...}"` est évalué comme du JS brut (voir htmx.min.js
+     — `Function("event", "return (...)")`), `my` n'existe pas dans ce
+     contexte (c'est un mot-clé propre à _hyperscript) — seul `event` est
+     disponible ; (5) `group-hover/column:` ne s'active que si l'élément
+     porteur du `group/column` est un ANCÊTRE réel de la cible — il était
+     posé sur .kanban-cards, alors que le bouton "+" du header est un
+     frère, pas un descendant : le survol de la colonne ne le révélait
+     jamais. -->
+<templates>
 
-    Props :
-      columns   : [{id, title, cards: [{id, title, subtitle?}, ...]}, ...]
-                  card['id'] DOIT être unique dans TOUTE la page (posé comme
-                  id= sur l'élément DOM — document.getElementById() s'en sert
-                  pour retrouver la carte glissée, voir plus bas).
-      move_url  : URL hx-post appelée à chaque dépôt d'une carte (reçoit
-                  card_id + column_id en POST). '' (défaut) désactive la
-                  persistance — les cartes bougent visuellement mais rien
-                  n'est envoyé au serveur (hx-post omis si move_url est vide,
-                  t-att-* n'émet pas d'attribut pour une valeur falsy).
-
-    Mécanique : `put X at end of Y` (commande _hyperscript — PAS `move X to
-    end of Y`, absent de cette version vendorisée : `move` seul n'accepte
-    pas `to end of`, testé et confirmé planter le parseur ; `put ... at end
-    of ...` déplace vraiment le nœud DOM existant, ce n'est pas un clone,
-    vérifié en direct) déplace la carte dans le DOM instantanément, sans
-    attendre de réponse serveur — l'appel hx-post part en parallèle pour
-    persister, hx-swap="none" (rien à ré-afficher, l'état visuel est déjà
-    correct). `send kanban:moved(card_id:…, column_id:…) to draggedCard`
-    pose ces valeurs sur `event.detail`, que hx-vals="js:…" lit au
-    déclenchement (htmx donne accès à `event`, l'événement qui a déclenché
-    la requête, dans une expression hx-vals js:). Pas de len() ni de compte
-    de cartes ici — CLAUDE.md : les calculs viennent déjà faits de la vue
-    Python si un appelant en a besoin.
-
-    Vérifié en vrai : scripts/verify-hyperscript.mjs (mécanique DOM/event)
-    et plugins/demo (round-trip hx-post réel, docs/components.md).
--->
 <template t-name="xweb.kanban">
     <t t-set="columns" t-default="[]"/>
     <t t-set="move_url" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="kanban flex gap-4 overflow-x-auto pb-2 {{extra_class}}">
+    <t t-set="add_card_url" t-default="''"/>
+    <t t-set="delete_card_url" t-default="''"/>
+
+    <div t-attf-class="kanban flex gap-3 overflow-x-auto pb-2 {{extra_class}}">
         <t t-foreach="columns" t-as="col">
-            <div class="kanban-column flex-none w-72 bg-base-200 rounded-box p-3 flex flex-col gap-2"
+            <div class="kanban-column flex-none w-80 flex flex-col gap-2 group/column"
                  t-att-data-column-id="col['id']"
-                 _="on dragover halt the event then add .bg-base-300 to me
-                    on dragleave remove .bg-base-300 from me
-                    on drop halt the event then remove .bg-base-300 from me
+                 _="on dragover halt the event then add .bg-base-200 to me
+                    on dragleave remove .bg-base-200 from me
+                    on drop halt the event then remove .bg-base-200 from me
                        set draggedId to event.dataTransfer.getData('text/plain')
                        set draggedCard to document.getElementById(draggedId)
                        if draggedCard is not null
                          put draggedCard at end of me
                          send kanban:moved(card_id: draggedId, column_id: my.dataset.columnId) to draggedCard
                        end">
-                <div class="kanban-column-title font-semibold text-sm px-1"><t t-esc="col['title']"/></div>
-                <div class="kanban-cards flex flex-col gap-2 min-h-10">
+
+                <!-- Header de colonne : titre + compteur discret -->
+                <div class="kanban-column-header flex items-center justify-between px-1 py-1">
+                    <div class="kanban-column-title font-medium text-sm text-base-content/90 flex items-center gap-2">
+                        <t t-esc="col['title']"/>
+                        <span class="text-xs text-base-content/50">
+                            <t t-esc="col.get('cards') or [] | length"/>
+                        </span>
+                    </div>
+                    <t t-if="add_card_url">
+                        <button type="button"
+                                class="btn btn-ghost btn-xs btn-square opacity-0 group-hover/column:opacity-100 hover:opacity-100 transition-opacity"
+                                t-att-hx-post="add_card_url"
+                                hx-vals="js:{column_id: event.target.closest('.kanban-column').dataset.columnId}"
+                                hx-target="closest .kanban-column"
+                                hx-swap="beforeend">
+                            <t t-call="xweb.icon" name="plus" extra_class="size-3.5"/>
+                        </button>
+                    </t>
+                </div>
+
+                <!-- Ligne de séparation subtile sous le header -->
+                <div class="h-px bg-base-content/[0.06] mb-1"></div>
+
+                <!-- Cartes -->
+                <div class="kanban-cards flex flex-col gap-1.5 min-h-10">
                     <t t-foreach="col['cards']" t-as="card">
-                        <div class="kanban-card card bg-base-100 shadow-sm p-3 cursor-grab active:cursor-grabbing"
-                             draggable="true"
-                             t-att-id="card['id']"
-                             t-att-hx-post="move_url or None"
-                             hx-trigger="kanban:moved"
-                             hx-vals="js:{card_id: event.detail.card_id, column_id: event.detail.column_id}"
-                             hx-swap="none"
-                             _="on dragstart call event.dataTransfer.setData('text/plain', my.id) then add .opacity-50 to me
-                                on dragend remove .opacity-50 from me">
-                            <div class="text-sm font-medium"><t t-esc="card['title']"/></div>
-                            <t t-if="card.get('subtitle')">
-                                <div class="text-xs opacity-60 mt-1"><t t-esc="card['subtitle']"/></div>
-                            </t>
-                        </div>
+                        <t t-call="xweb.kanban_card"
+                           t-att-card="card"
+                           t-att-move_url="move_url"
+                           t-att-delete_url="delete_card_url"/>
+                    </t>
+
+                    <!-- Bouton "Nouvelle carte" en bas de colonne -->
+                    <t t-if="add_card_url">
+                        <button type="button"
+                                class="btn btn-ghost btn-sm w-full justify-start text-base-content/60 hover:text-base-content mt-1"
+                                t-att-hx-post="add_card_url"
+                                hx-vals="js:{column_id: event.target.closest('.kanban-column').dataset.columnId}"
+                                hx-target="closest .kanban-column"
+                                hx-swap="beforeend">
+                            <t t-call="xweb.icon" name="plus" extra_class="size-4"/>
+                            <span class="ml-1 text-sm">Nouvelle carte</span>
+                        </button>
                     </t>
                 </div>
             </div>
         </t>
     </div>
 </template>
+
+
+<!-- Carte individuelle : template séparé pour réutilisation (add_card_url rend ce fragment) -->
+<template t-name="xweb.kanban_card">
+    <t t-set="card" t-default="{}"/>
+    <t t-set="move_url" t-default="''"/>
+    <t t-set="delete_url" t-default="''"/>
+
+    <div class="kanban-card group/card relative bg-base-100 border border-base-content/[0.08] rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-base-content/[0.15] hover:bg-base-content/[0.02] transition-all duration-150"
+         draggable="true"
+         t-att-id="card['id']"
+         t-att-hx-post="move_url or None"
+         hx-trigger="kanban:moved"
+         hx-vals="js:{card_id: event.detail.card_id, column_id: event.detail.column_id}"
+         hx-swap="none"
+         _="on dragstart call event.dataTransfer.setData('text/plain', my.id) then add .opacity-50 to me
+            on dragend remove .opacity-50 from me">
+
+        <!-- Bouton supprimer : coin haut-droit, visible seulement au hover
+             de la carte — même convention que la ligne de xweb.editable_table
+             (bouton dans un conteneur draggable, hx-delete + hx-swap="outerHTML"). -->
+        <t t-if="delete_url">
+            <button type="button"
+                    class="btn btn-ghost btn-xs btn-square absolute top-1.5 right-1.5 opacity-0 group-hover/card:opacity-100 hover:opacity-100 hover:bg-error/10 hover:text-error transition-opacity"
+                    aria-label="Supprimer la carte"
+                    t-attf-hx-delete="{{delete_url}}/{{card['id']}}"
+                    hx-target="closest .kanban-card"
+                    hx-swap="outerHTML">
+                <t t-call="xweb.icon" name="trash" extra_class="size-3"/>
+            </button>
+        </t>
+
+        <!-- Drag handle + contenu -->
+        <div class="flex items-start gap-2">
+            <!-- Drag handle : visible seulement au hover de la carte -->
+            <div class="drag-handle opacity-0 group-hover/card:opacity-40 hover:opacity-80 transition-opacity cursor-grab active:cursor-grabbing mt-0.5">
+                <t t-call="xweb.icon" name="menu" extra_class="size-3.5 text-base-content/60"/>
+            </div>
+
+            <!-- Contenu de la carte : pr-5 seulement si un bouton supprimer
+                 existe, pour ne pas grignoter la largeur des cartes sans -->
+            <div t-attf-class="flex-1 min-w-0 {{'pr-5' if delete_url else ''}}">
+                <div class="text-sm font-medium text-base-content/90 break-words">
+                    <t t-esc="card['title']"/>
+                </div>
+
+                <t t-if="card.get('subtitle')">
+                    <div class="text-xs text-base-content/60 mt-1 break-words">
+                        <t t-esc="card['subtitle']"/>
+                    </div>
+                </t>
+
+                <!-- Tags/propriétés optionnels (style Notion : badges discrets) -->
+                <t t-if="card.get('tags')">
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        <t t-foreach="card['tags']" t-as="tag">
+                            <span t-attf-class="badge badge-xs badge-{{tag.get('color', 'neutral')}} text-[10px] font-normal px-1.5 py-0.5 h-auto">
+                                <t t-esc="tag['label']"/>
+                            </span>
+                        </t>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </div>
+</template>
+
+</templates>

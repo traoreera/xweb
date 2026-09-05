@@ -5,12 +5,24 @@ mais son contenu (CSP) doit être revérifié pour la pile xweb, pas
 recopié tel quel :
 
   - xui accordait `'unsafe-eval'` à `script-src` parce qu'Alpine.js
-    évalue des expressions via eval/new Function. htmx n'a pas ce besoin
-    (docs/language.md — hx-* sont des requêtes serveur, pas de
-    JS évalué depuis un attribut). `_hyperscript`, en revanche,
-    interprète sa propre DSL au runtime et a probablement un besoin
-    similaire — **non vérifié contre sa documentation**, à confirmer
-    avant de retirer `'unsafe-eval'` d'ici.
+    évalue des expressions via eval/new Function. La quasi-totalité des
+    attributs `hx-*` n'a pas ce besoin (docs/language.md, `studio/xweb/assets/
+    htmx.meta.yaml` — ce sont des requêtes serveur/déclencheurs/swaps,
+    jamais du JS évalué depuis un attribut) — **sauf `hx-on-*`**
+    (`hx-on-click="…"`, forme tiret ; la forme `hx-on:click` avec `:`
+    ne parse même pas dans ce moteur, `etree.fromstring` la rejette comme
+    préfixe de namespace XML non déclaré, testé directement contre lxml),
+    qui appelle bien `new Function("event", …)` — vérifié en le faisant
+    tourner pour de vrai contre `xweb/static/htmx.min.js` en jsdom. Aucun
+    template de ce dépôt n'utilise `hx-on-*` aujourd'hui (grep vérifié),
+    donc ça ne force rien ici, mais l'affirmation "htmx n'a pas ce besoin"
+    était fausse pour cette famille précise d'attribut — voir
+    `studio/xweb/assets/htmx.meta.yaml` (`forbidden_families`) pour pourquoi le
+    Studio la refuse plutôt que de la lister comme un attribut hx-* de
+    plus. `_hyperscript`, de son côté, interprète sa propre DSL au
+    runtime et a probablement un besoin similaire à `'unsafe-eval'` —
+    **non vérifié contre sa documentation**, à confirmer avant de retirer
+    `'unsafe-eval'` d'ici.
   - Le hash SHA-256 du script inline anti-flash de thème est calculé
     (`XWEB_THEME_SCRIPT_HASH` ci-dessous) contre le texte réellement rendu
     de `xweb/components/shell.xml`, pas deviné depuis le source — un vrai bug

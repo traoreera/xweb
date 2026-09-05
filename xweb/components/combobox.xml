@@ -26,7 +26,7 @@
         <input type="text" tabindex="0" t-attf-id="{{id}}-input" class="input input-bordered w-full"
                t-att-placeholder="placeholder" t-att-value="value" autocomplete="off"
                t-attf-_="on input show &lt;.combobox-option/&gt; in #{{id}}-list when its textContent.toLowerCase() contains my value.toLowerCase()"/>
-        <ul t-attf-id="{{id}}-list" tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-full max-h-64 overflow-y-auto p-2 shadow-lg border border-base-300">
+        <ul t-attf-id="{{id}}-list" tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-40 w-full max-h-64 overflow-y-auto p-2 shadow-sm border border-base-300">
             <t t-if="not options"><li class="opacity-60 px-3 py-2 text-sm">Aucune option.</li></t>
             <t t-foreach="options" t-as="opt">
                 <li class="combobox-option">

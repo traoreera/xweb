@@ -13,7 +13,15 @@
     <t t-set="size" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
     <dialog t-att-id="id" t-attf-class="modal {{extra_class}}">
-        <div t-attf-class="modal-box {{size}}">
+        <!-- shadow-none : .modal-box de DaisyUI pose box-shadow:0 25px 50px
+             -12px oklch(0% 0/.25) par défaut (vérifié dans le CSS généré) —
+             un flottement "carte SaaS" dramatique. shadow-none (utilitaire
+             Tailwind, @layer utilities) l'emporte sur la règle DaisyUI
+             (@layer components) par priorité de couche CSS, pas par
+             spécificité — même mécanisme que le repli de sidebar (voir
+             xweb/static/xweb.css). border pour garder une limite nette
+             contre le fond assombri, sans ombre. -->
+        <div t-attf-class="modal-box shadow-none border border-base-300 {{size}}">
             <form method="dialog" hx-boost="false">
                 <button type="submit" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Fermer">✕</button>
             </form>

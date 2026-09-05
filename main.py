@@ -42,6 +42,26 @@ async def lifespan(app: FastAPI):
 
     bind_hot_reload(xcore, xcore.services.get("ext.xweb"))
 
+    # Démo de xweb.shell (docs/shell.md) — plugins/ est vide dans ce projet
+    # (voir le commentaire plus bas sur AnonymousAuthBackend), donc aucun
+    # plugin ne contribue jamais de nav/commande/status réels : sans ça, le
+    # shell rendrait "Aucun plugin n'a encore contribué de navigation." et
+    # rien d'autre, invisible à évaluer. Enregistré une seule fois ici (pas
+    # par requête — nav/commands/status_bar sont des singletons de module,
+    # xweb/contrib.py) avec plugin="site", même schéma qu'un vrai on_load()
+    # de plugin. Voir la route "/shell" plus bas.
+    from xweb.contrib import AUTHENTICATED, Contribution, commands, nav, status_bar
+
+    nav.register(Contribution(id="site.nav.shell_home", plugin="site", label="Accueil du shell", icon="home", path="/shell", order=10))
+    nav.register(Contribution(id="site.nav.components", plugin="site", label="Composants", icon="grid", path="/", order=20))
+    nav.register(Contribution(id="site.nav.docs", plugin="site", label="Organisation", icon="building", order=30, parent_id=None))
+    nav.register(Contribution(id="site.nav.docs.members", plugin="site", label="Membres", icon="users", path="/shell#membres", order=10, parent_id="site.nav.docs", badge="Démo"))
+    nav.register(Contribution(id="site.nav.docs.security", plugin="site", label="Sécurité", icon="shield", path="/shell#securite", order=20, parent_id="site.nav.docs", permission=AUTHENTICATED))
+    commands.register(Contribution(id="site.cmd.home", plugin="site", label="Aller à l'accueil du shell", icon="home", action_url="/shell", hotkey="G H"))
+    commands.register(Contribution(id="site.cmd.components", plugin="site", label="Voir le catalogue de composants", icon="grid", action_url="/", hotkey="G C"))
+    status_bar.register(Contribution(id="site.status.version", plugin="site", label="xweb v0.1", side="left"))
+    status_bar.register(Contribution(id="site.status.demo", plugin="site", label="Démo — état en mémoire", icon="info", tooltip="Se réinitialise au redémarrage du serveur", side="right"))
+
     # Landing page sur "/" — aucun plugin ne peut la servir lui-même : xcore
     # préfixe systématiquement chaque routeur de plugin sous /plugins/<nom>/
     # (xcore/__init__.py::boot(), vérifié), donc "/" doit être monté ici,
@@ -86,11 +106,48 @@ async def lifespan(app: FastAPI):
 
     @site_router.api_route("/", methods=["GET", "HEAD"])
     async def landing(request: Request):
+        engine = xcore.services.get("ext.xweb").engine
+        # xweb.notification_bell dans topbar_content (xweb.marketing_layout
+        # -> xweb.topbar_slot, t-out volontaire — voir sa docstring dans
+        # xweb/components/layout.xml : "topbar_content doit être du HTML
+        # déjà rendu par le serveur"). Démo, comme le reste de cette page :
+        # user=None sur la landing (voir le commentaire au-dessus de
+        # lifespan()), donc un compteur/panneau partagé par tous les
+        # visiteurs plutôt que par compte — cohérent avec le reste de la
+        # page qui n'a structurellement pas de notion d'utilisateur connecté.
+        bell_html = engine.render("xweb.notification_bell", {
+            "unread_count": landing_data.notifications_context()["unread_count"],
+            "notifications_url": "/notifications/panel",
+        })
         return render_xweb_template(
-            xcore.services.get("ext.xweb").engine, "site.landing", _SiteContext(), request, user=None,
-            extra={"showcase": showcase_context()},
+            engine, "site.landing", _SiteContext(), request, user=None,
+            extra={"showcase": showcase_context(), "topbar_content": bell_html},
             app_name=APP_NAME, page_title=APP_NAME,
             layout="xweb.marketing_layout", use_shell=True,
+            demo_path="/shell",  # allume le lien "Démo" de xweb.marketing_layout, jusque-là jamais utilisé
+        )
+
+    # Démo de xweb.shell — sidebar (nav enregistrée juste au-dessus),
+    # topbar, palette de commandes (Ctrl+K), status bar, zone de toasts.
+    # render_xweb_template() direct, PAS mount_xweb_page() : même raison que
+    # la landing (pas d'AuthBackend chargé dans ce projet, voir le
+    # commentaire au-dessus de lifespan()) — user=None explicite, pas un
+    # contournement de sécurité, cette page ne protège structurellement rien.
+    #
+    # templates/shell_demo.xml (site.shell_demo) doit exister sur disque
+    # AVANT que ce fichier-ci (main.py) se recharge : `xcli manager start
+    # --reload` ne surveille que les *.py (CLAUDE.md), donc ajouter un NOUVEAU
+    # .xml pendant qu'un process --reload tourne déjà ne suffit pas à le
+    # faire apparaître dans le registre — il faut un rechargement déclenché
+    # par un .py (comme cette ligne de commentaire) ou un redémarrage manuel
+    # complet, sinon KeyError "no template named 'site.shell_demo'" au
+    # premier rendu malgré un fichier bel et bien présent sur disque.
+    @site_router.get("/shell")
+    async def shell_demo(request: Request):
+        return render_xweb_template(
+            xcore.services.get("ext.xweb").engine, "site.shell_demo", _SiteContext(), request, user=None,
+            app_name=APP_NAME, page_title="Démo du shell",
+            layout="xweb.shell", use_shell=True,
         )
 
     # Export PDF du catalogue de composants (bouton "Télécharger le PDF" de
@@ -214,6 +271,37 @@ async def lifespan(app: FastAPI):
         engine = xcore.services.get("ext.xweb").engine
         html = engine.render("xweb.editable_table_header_cell", {"col": col, "rename_column_url": "/demo/table/column"})
         return Response(content=html, media_type="text/html")
+
+    # Démo de xweb.notification_bell / xweb.notification_panel — même
+    # schéma que la table éditable ci-dessus (état réel dans landing_data.py,
+    # pas un mock). notification_bell cible /notifications/panel en GET
+    # (hx-target="#xweb-notification-panel", posé une fois via le bouton
+    # cloche) ; notification_panel se re-rend lui-même après chaque mutation
+    # (mark_all_read_url/mark_read_url), toujours avec le même id — voir la
+    # docstring de xweb.notification_panel dans
+    # xweb/components/notifications.xml.
+    def _render_notification_panel() -> str:
+        engine = xcore.services.get("ext.xweb").engine
+        ctx = landing_data.notifications_context()
+        return engine.render("xweb.notification_panel", {
+            "notifications": ctx["notifications"], "unread_count": ctx["unread_count"],
+            "mark_all_read_url": "/notifications/mark-all-read",
+            "mark_read_url": "/notifications/mark-read",
+        })
+
+    @site_router.get("/notifications/panel")
+    async def notifications_panel():
+        return Response(content=_render_notification_panel(), media_type="text/html")
+
+    @site_router.post("/notifications/mark-all-read")
+    async def notifications_mark_all_read():
+        landing_data.mark_all_notifications_read()
+        return Response(content=_render_notification_panel(), media_type="text/html")
+
+    @site_router.post("/notifications/mark-read/{notif_id}")
+    async def notifications_mark_read(notif_id: str):
+        landing_data.mark_notification_read(notif_id)
+        return Response(content=_render_notification_panel(), media_type="text/html")
 
     app.include_router(site_router)
 

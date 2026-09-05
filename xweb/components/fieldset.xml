@@ -1,0 +1,22 @@
+<!--
+    xweb.fieldset — regroupe plusieurs xweb.field sous un même titre
+    (DaisyUI natif, .fieldset/.fieldset-legend/.fieldset-label). Un vrai
+    <fieldset> HTML — hérite du comportement natif (disabled sur le
+    fieldset désactive tous les champs à l'intérieur, sans rien à coder).
+
+    Props :
+      legend : titre du groupe (<legend>)
+      help   : texte d'aide sous le groupe (fieldset-label)
+      extra_class : classes supplémentaires
+    slot : les champs (xweb.field/input/select/... imbriqués)
+-->
+<template t-name="xweb.fieldset">
+    <t t-set="legend" t-default="''"/>
+    <t t-set="help" t-default="''"/>
+    <t t-set="extra_class" t-default="''"/>
+    <fieldset t-attf-class="fieldset {{extra_class}}">
+        <t t-if="legend"><legend class="fieldset-legend"><t t-esc="legend"/></legend></t>
+        <t t-out="slot"/>
+        <t t-if="help"><p class="fieldset-label"><t t-esc="help"/></p></t>
+    </fieldset>
+</template>
