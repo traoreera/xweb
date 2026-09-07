@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from .compiler import Compiler, TemplateError
 from .inherit import Patch, apply_patch_ops, extract_patch
-from .parser import parse_templates
+from .parser import TemplateSyntaxError, parse_templates
 
 if TYPE_CHECKING:
     from lxml import etree
@@ -77,7 +77,23 @@ class QwebRegistry:
                 self._template_plugin[name] = source_plugin
                 self._resolved.pop(name, None)
             self.version += 1
+        self._validate_shorthand_targets(templates, filename=filename)
         return list(templates)
+
+    def _validate_shorthand_targets(self, templates: "dict", *, filename: str) -> None:
+        """Un <xweb:...> au parse n'a jamais le droit de viser un t-name
+        absent du registre — l'envers exact des t-* muets du rendu. La
+        vérification a lieu ici (après l'enregistrement des templates de
+        ce source), pas au premier rendu, pour que l'erreur d'auteur
+        tombe au chargement, avec le fichier en cause."""
+        if not getattr(templates, "shorthand_targets", None):
+            return
+        unknown = [t for t in templates.shorthand_targets if self.get(t) is None]
+        if unknown:
+            raise TemplateSyntaxError(
+                f"{filename}: <xweb:...> -> cible(s) absente(s) du registre : "
+                f"{', '.join(sorted(set(unknown)))}"
+            )
 
     def register_file(self, path: str | Path, *, source_plugin: str = "") -> list[str]:
         path = Path(path)
