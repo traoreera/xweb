@@ -1,0 +1,82 @@
+/*
+ * site/static/site.css — le peu de CSS propre à ce site, PAR-DESSUS DaisyUI.
+ *
+ * Injecté dans le <head> commun par site/templates/shell_patch.dsl (un patch
+ * t-inherit sur xweb.shell_head), jamais en éditant le composant vendorisé.
+ *
+ * Tout ce qui peut être fait avec une classe DaisyUI/Tailwind existante l'est
+ * dans les templates .dsl — ce fichier ne couvre que ce qu'aucune classe
+ * utilitaire ne donne : le style des blocs de code et de leur coloration.
+ */
+
+/* --- Blocs de code -------------------------------------------------------
+ * Les exemples sont écrits en chaînes multi-lignes xdsl (convention "newline
+ * en tête", voir site/templates/home.dsl) : site.js fait un trim() au
+ * chargement, ce CSS s'occupe du reste.
+ */
+.code-block {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.code-block code {
+  display: block;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.code-block.diagram code {
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+/* --- Coloration syntaxique (posée par site.js) ---------------------------
+ * Un jeu FERMÉ de classes, comme le jeu fermé de mots-clés côté JS — pas un
+ * thème de coloration générique importé d'ailleurs.
+ */
+.tok-keyword { color: #cba6f7; font-weight: 600; }
+.tok-string  { color: #a6e3a1; }
+.tok-comment { color: #6c7086; font-style: italic; }
+.tok-deco    { color: #f9e2af; }
+.tok-tag     { color: #89b4fa; }
+.tok-attr    { color: #94e2d5; }
+
+/* --- Cartes d'index ------------------------------------------------------ */
+.index-card {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Masquage par le filtre de recherche (site.js). `display: none` plutôt que
+ * l'attribut `hidden` : la grille CSS traite un enfant `hidden` comme une
+ * cellule vide dans certains navigateurs, ce qui laisse des trous. */
+.index-card.is-filtered-out {
+  display: none;
+}
+
+/* --- Cadre de démo d'un composant ---------------------------------------
+ * Le composant rendu à l'intérieur vient du VRAI moteur : il peut contenir
+ * n'importe quoi (un drawer, une modale, un kanban). On borne la hauteur
+ * pour qu'un composant volumineux ne pousse pas le reste de la page hors
+ * de l'écran, sans jamais le rogner silencieusement.
+ */
+.demo-frame {
+  max-height: 32rem;
+  overflow: auto;
+}
+
+/* --- Tables de référence ------------------------------------------------- */
+.table code {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
