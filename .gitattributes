@@ -1,1 +1,3 @@
-*.xml linguist-documentation=false linguist-detectable=true
+# DSL language configuration for GitHub
+*.dsl linguist-language=Dsl
+*.dsl linguist-vendored=false
