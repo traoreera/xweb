@@ -23,7 +23,9 @@
     <t t-set="h" t-default="'end'"/>
     <t t-set="slot_badge" t-default="None"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="indicator {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="indicator {{extra_class}}">
         <t t-if="slot_badge">
             <span t-attf-class="indicator-item indicator-{{v}} indicator-{{h}}">
                 <t t-out="slot_badge"/>

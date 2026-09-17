@@ -26,18 +26,23 @@ JS/CSS vendorisés dans `xweb/static/` : `htmx.min.js` (2.0.10, 0BSD), `_hypersc
 
 ## 2. État réel du projet, aujourd'hui — pas une supposition
 
-`plugins/` et `extensions/` sont **vides** (supprimés en cours de projet, remise à zéro délibérée). Ce qui existait avant et pourrait revenir : `plugins/auth` (backend JSON pur, multi-tenant/RBAC/MFA/OAuth), `plugins/account` (pont HTML devant lui), `plugins/demo`, `plugins/XPulses` (SSE), `extensions/pubsub`, `extensions/googleService`, `extensions/email.py` (`ConsoleEmailExtension`). **Ne jamais supposer qu'un de ces plugins existe sans vérifier `ls plugins/`.**
+**Remis à zéro depuis la dernière version de ce fichier** : `main.py`, `templates/` (landing, catalogue, export PDF) **n'existent plus du tout** — vérifié par `find . -maxdepth 1`, pas une supposition. Ce que la section précédente de ce fichier décrivait (landing page montée par `main.py`, `templates/components_showcase.xml`, démo `editable_table` persistée via `landing_data.py`) a disparu entre-temps. `plugins/` et `extensions/` restent **vides**, comme avant.
 
-Ce qui tourne réellement aujourd'hui :
-- La **landing page** (`/`, `templates/landing.xml`), montée directement par `main.py` (hors système de plugins — voir §8).
-- Le **catalogue de composants** (`templates/components_showcase.xml`, appelé par `t-call` depuis `site.landing`) — ~46 composants `xweb.*` rendus en vrai sur la même page.
-- Une **démo persistée** de `xweb.editable_table` (`landing_data.py` — état de module, pas une base de données — + routes `/demo/table/*` dans `main.py`).
-- Un **export PDF** du catalogue (`GET /components.pdf`, `templates/components_pdf.xml`).
+Ce qui existe réellement à la racine aujourd'hui :
+- **`xdsl/`** — un DSL déclaratif QML-like, transpileur vers du XML QWeb standard, **implémenté** (pas juste designé) — voir §17, nouvelle section dédiée. `docs/dsl-design.md` porte encore un bandeau "phase de conception" en tête : **périmé**, à ignorer, le parser/compiler/validators existent et sont testés.
+- **`contacts_demo.dsl` + `contacts_demo_app.py`** — une démo CRUD complète et fonctionnelle (formulaire dans un `xweb.popover`, table qui se rafraîchit par événement htmx, **plus un `channel` SSE temps réel** : compteur live via `bind:` et rafraîchissement de la table via `refresh:`, déclenchés par une vraie route `GET /sse/contacts` qui diffuse à chaque création/suppression — y compris depuis un autre onglet), **autonome** : son propre FastAPI, sa propre route `/`, sans passer par `xcore.boot()`/`main.py`/le système de plugins. Sert de référence vivante pour les patterns `endpoint`/`use:` **et** `channel`/`use_channel:` de §17. Vérifiée bout en bout contre le vrai serveur par `npm run verify:contacts-channel` (jsdom + vrai htmx + vrai `live_channel.js` ; la preuve décisive est un contact créé par un POST **hors** de la page, qui y apparaît quand même). `uv run uvicorn contacts_demo_app:app --reload` pour la lancer — **`--reload` ne watch que les `.py`, pas `contacts_demo.dsl`**, redémarrer à la main après un changement du `.dsl`.
+- **`catalogue.dsl`/`catalogue.html`/`catalogue.xdsl.json`** (non trackés git) — sortie de `scripts/catalogue.py`, un catalogue de tous les composants `xweb.*` rendus avec des props de démo, généré via le pipeline xdsl plutôt qu'à la main.
+- **`scripts/dsl2html.py`** — pipeline `.dsl`/`.xdsl.json` → XML → aperçu HTML statique (pas un serveur, contrairement à `contacts_demo_app.py`).
+- **`docs_site_app.py` + `docs_site.dsl` + `docs_site_data.py`** — LE site de démo/référence à héberger réellement (`uv run uvicorn docs_site_app:app --reload`), pas un HTML statique généré : une vraie app FastAPI+QwebRegistry (même posture que `contacts_demo_app.py`), pages écrites **en xdsl** (`docs_site.dsl` : `overview_page`/`index_page`/`text_detail_page`/`component_detail_page`, réutilisant de VRAIS composants `xweb.table`/`xweb.badge`/`xweb.collapse`/`xweb.breadcrumbs`, pas du HTML/CSS écrit à la main), navigation réelle via `xweb.shell`/`NavRegistry` (5 entrées de nav, `hx-boost` natif — aucun `hx-get`/`hx-target` manuel sur les liens). Chaque composant `xweb.*` (~69) a sa propre route `/components/{short}` avec : docstring réelle, démo **réellement rendue** (vrai `QwebRegistry`), props réellement extraites de leur `<t t-set="..." t-default="...">`, **usage xdsl ET usage QWeb (`t-call`)** — les deux formes d'appel, générées depuis le même jeu de props de démo (`scripts/catalogue.py::DEMO`), avec la distinction RÉELLE entre les deux (un attribut littéral sur un `t-call` est toujours une chaîne, un bool/nombre a besoin de `t-att-x="expr"` — docs/language.md#t-call) et source QWeb brute. `docs_site_data.py` réutilise `scripts/generate_docs_site.py` (import direct, `scripts/` comme namespace package) pour le contenu prose (syntaxe xdsl/directives QWeb/guides), pas redupliqué une 2e fois.
+
+  **Bug réel du PARSER xdsl trouvé et corrigé en construisant ce site** (`xdsl/parser.py::_read_expression`) : un item de liste qui est un littéral dict — `items: [{"label": "Accueil", "path": "/"}]`, la forme attendue par `xweb.breadcrumbs`/`xweb.table` déclarée INLINE dans un `.dsl` plutôt que passée depuis le contexte Python — **bouclait à l'infini**. `_read_expression` s'arrête inconditionnellement sur un `{` à profondeur 0 (`{` = début du corps d'un élément dans tous ses autres appels) et rend une chaîne vide SANS avancer le curseur ; `_parse_list` retestait alors éternellement le même token `{`, jamais `RBRACKET`. Corrigé par un paramètre `allow_top_level_brace` (n'affecte que le tout premier token de l'expression, jamais les appels existants). Testé avec un timeout dur (`signal.alarm`, pas de dépendance `pytest-timeout`) dans `xdsl/tests/test_parser.py::TestClassList::test_list_of_dict_literals_does_not_hang` — sans ce genre de garde-fou, une régression future ferait juste pendre `pytest` indéfiniment plutôt que d'échouer proprement. **La forme qui MARCHE pour un vrai littéral liste-de-dicts inline dans un `.dsl`** (celle qu'utilise `docs_site.dsl`) reste l'assignation locale déjà établie par `contacts_demo.dsl` (`table_columns = [...]` puis `table { columns: table_columns }`) — `_parse_list()` (la syntaxe `attr: [...]`) ne produit qu'une STRING jointe par des espaces (`t-attf-*`, pensée pour `class:`), jamais une vraie liste Python ; passer par une `Assignment` (`x = [...]`) produit un `t-set`/`t-value` avec un VRAI littéral Python, `t-att-x="x"` référençant une vraie liste au rendu.
+
+  L'ancien générateur HTML statique (`scripts/generate_docs_site.py` → `docs-site.html`, non tracké git) reste utilisable pour un aperçu rapide hors-ligne (routage `location.hash`, aucun serveur requis) mais n'est plus le livrable principal — `docs_site_app.py` est LE site à héberger.
 
 Dette connue, non résolue à ce jour :
 - `integration.yaml` référence encore `plugins.directory: "./plugins"`, `namespaces.demo`/`namespaces.account` (chemins morts).
-- `main.py` a une variable `page = PageRoute(path="/", ...)` (import de `xweb.urls`) jamais branchée sur `mount_xweb_pages` — la landing tourne sur un appel direct à `render_xweb_template`, pas sur ce module.
-- Les docs (`docs/*.md`) n'ont pas été ré-auditées pour des exemples `plugins/demo`/`plugins/account` qui référencent du code aujourd'hui supprimé, au-delà de ce qui a été corrigé au fil de cette session.
+- Les docs (`docs/*.md`) n'ont pas été ré-auditées pour des exemples `plugins/demo`/`plugins/account` qui référencent du code aujourd'hui supprimé, au-delà de ce qui a été corrigé au fil des sessions successives.
+- Rien dans `xdsl/` ne génère d'attributs HTML5 natifs (`required`, `type="email"`...) depuis un schéma `data`/`@decorateur` — v1, voir §17.
 
 ---
 
@@ -285,11 +290,135 @@ Wrapper client-side pour `localStorage`, écrit à la main (comme le reste du JS
 ## 16. Ce qui reste ouvert (au moment où ce fichier a été écrit)
 
 - `integration.yaml` : `plugins.directory`, `namespaces.demo`/`namespaces.account` pointent vers des dossiers supprimés.
-- `main.py` : `page = PageRoute(...)` défini, jamais passé à `mount_xweb_pages` — code mort.
 - `xweb/urls.py` : testé, jamais utilisé en pratique dans ce projet.
-- Aucun plugin réel n'existe — tout ce qui est câblé (permissions, RBAC, hot-reload de plugin) n'a jamais retourné vrai depuis la suppression de `plugins/`/`extensions/`, seulement la landing page (hors système de plugins par construction).
-- Docs (`docs/*.md`) pas ré-auditées de fond en comble pour des exemples `plugins/demo`/`plugins/account` obsolètes au-delà de ce qui a été corrigé au fil de cette session.
+- Aucun plugin réel n'existe — tout ce qui est câblé (permissions, RBAC, hot-reload de plugin) n'a jamais retourné vrai depuis la suppression de `plugins/`/`extensions/`. `main.py`/`templates/` (qui montaient une landing hors système de plugins) ont eux aussi disparu depuis — plus aucune page ne tourne actuellement en dehors de `contacts_demo_app.py`, qui est délibérément autonome (§2, §17).
+- Docs (`docs/*.md`) pas ré-auditées de fond en comble pour des exemples `plugins/demo`/`plugins/account` obsolètes au-delà de ce qui a été corrigé au fil des sessions successives.
 - `npm run verify:demo` cible `/plugins/demo/`, qui n'existe plus — actuellement cassé, pas un faux négatif à ignorer.
+- `xdsl` : pas d'attributs HTML5 natifs générés depuis `data`/`@decorateur` (v1, §17) ; `endpoint.auth` est parsé mais n'a aucun effet à la compilation (`"cookie"` est un no-op délibéré — l'auth de ce projet est 100% cookies HttpOnly, rien à ajouter côté client ; toute autre valeur, ex. `"bearer"`, n'est simplement pas câblée).
+
+---
+
+## 17. `xdsl/` — DSL déclaratif QML-like, sucre syntaxique pour QWeb
+
+**Implémenté**, pas juste designé — `docs/dsl-design.md` porte encore en tête "Statut : Phase de conception, pas encore implémenté" : **périmé**, à ignorer, tout ce qui suit a du code réel et des tests derrière (`xdsl/parser.py`, `xdsl/compiler.py`, `xdsl/serialize.py`, `xdsl/api.py`, `xdsl/validators.py`, `xdsl/tests/` — **non ramassé par `uv run pytest` seul**, `testpaths=["tests"]` dans `pyproject.toml`, lancer `uv run pytest xdsl/tests` séparément). N'est **pas** branché dans le chemin de service d'une vraie app xcore (`QwebRegistry.register_source`/`register_dir` détectent et transpilent un `.dsl` automatiquement — voir plus bas — mais aucun plugin réel n'existe pour en profiter, §16).
+
+### Pipeline
+
+```
+.dsl (texte) ──Parser──▶ AST ──Compiler──▶ XML QWeb ──QwebRegistry──▶ rendu
+.xdsl.json (capsule No-Code) ──ast_from_json──▶ AST ──Compiler──▶ (même XML)
+```
+
+`QwebRegistry.register_source()`/`register_dir()` (`xweb/engine/registry.py`) détectent un `.dsl` par **extension du filename OU par contenu** (`_is_dsl_source` : pas de `<` en tête après espaces/BOM) et transpilent avant d'enregistrer — un plugin dépose un `.dsl` là où un `.xml` allait, rien d'autre ne change. `register_dir` scanne `*.xml` **et** `*.dsl`.
+
+### `data`/`@decorateur` — schéma de validation, PAS de rendu
+
+```qml
+data contact_form {
+    name: string @required @min_length(3)
+    email: string @required @email
+    role: string @in(["admin", "editor"])
+}
+```
+
+`@décorateur[(args)]` = une règle de `xdsl/validators.py::BUILTIN_VALIDATORS` (`required`, `min_length`, `max_length`, `min`, `max`, `email`, `pattern`, `in`) — champ sans `@required` = optionnel (`Required` est une règle comme une autre, pas un flag séparé). `data` n'émet **aucun XML** — c'est un schéma consommé côté **serveur** :
+
+```python
+from xdsl.api import extract_schemas
+from xdsl.validators import validate_dict
+schemas = extract_schemas(dsl_source)
+errors = validate_dict(payload, schemas["contact_form"])  # {} si valide
+```
+
+**Piège réel, à ne pas refaire** : `data`/`@decorateurs` ne génère **aucun** attribut HTML5 natif (`required`, `type="email"`...) sur les `<input>` correspondants — v1, documenté, l'auteur DSL les écrit toujours à la main (voir `contacts_demo.dsl`). Sans route Python qui appelle `extract_schemas`/`validate_dict` explicitement, **rien ne valide nulle part**, ni client ni serveur — `data` est un outil DRY, pas un mécanisme d'application forcée.
+
+### `endpoint`/`use:` — requête réseau déclarative, htmx natif
+
+```qml
+endpoint create_contact {
+    method: POST
+    url: "/api/contacts"
+    send: contact_form
+    receive { type: json  target: "#contacts-table"  event: "contacts:changed" }
+    onloading { p { "Envoi..." } }
+    onsuccess { toast { "Créé !" } }
+    onerror { toast { "Erreur" } }
+}
+form { use: create_contact
+    input { name: "name"; required: true }
+}
+```
+
+**Décision d'architecture centrale** : QWeb n'a **aucun runtime navigateur** (`xweb/engine/` est server-only) — `receive`/`use:` ne rend **jamais** de JSON en HTML côté client, ça reviendrait à réécrire le moteur de rendu en JS. `receive.target`/`event` diffuse un événement au succès (`send {event} to {target}`) ; c'est à l'élément CIBLE de s'auto-rafraîchir depuis le **serveur** via un vrai `hx-trigger="{event} from:body"` — même idiome que `calendar:select`→`xweb.datepicker`. `onloading`/`onsuccess`/`onerror` sont du contenu DSL **statique**, précompilé une fois pour toutes (pas de liaison aux champs de la réponse JSON — `toast { "Créé !" }` fixe, jamais un gabarit rempli à l'exécution).
+
+`use: nom` expanse, à la compilation (`Compiler._endpoint_attrs`/`_endpoint_hyperscript`/`_write_endpoint_scaffolding`), sur l'élément porteur (`form`/`button`, brut ou `t-call` vers `xweb.form`/`xweb.button` — ces deux-là ont dû apprendre à forwarder `hx_headers`/`hx_indicator` en plus de leur whitelist `hx_get`/`hx_post`/... déjà là) :
+- `hx-{method}="{url}"`, `hx-headers` (JSON du dict `headers`), `hx-indicator="#{id}-indicator"` si `onloading` non vide.
+- **`hx-swap="none"` automatique dès que `receive.kind == "json"`** — sans lui, htmx applique son défaut (remplacer l'innerHTML de l'élément DÉCLENCHEUR par le corps brut de la réponse), le texte JSON écraserait le formulaire lui-même. Bug réel trouvé en construisant une vraie démo, corrigé, testé.
+- Un `_hyperscript` `on htmx:afterRequest` qui bascule la visibilité (`@hidden`) des blocs onsuccess/onerror précompilés (des `<div hidden="hidden">` siblings, id `{use_id}-onsuccess`/`-onerror`, `{ep.name}-{compteur}` — un compteur par usage, deux éléments peuvent réutiliser le même endpoint sans collision d'id).
+- CSRF : sur un `<form>` brut + méthode mutante, injecte `<t t-call="xweb.csrf" t-att-token="csrf_token"/>` en premier enfant ; sur un `t-call="xweb.form"`, transmet plutôt la prop `token="csrf_token"` (xweb.form pose déjà son propre champ en interne — jamais les deux à la fois).
+- `use: nom_inconnu` lève `xdsl.compiler.CompileError` à la compilation — jamais un élément inerte silencieux.
+
+**Piège réel, `headers: { "Content-Type": "application/json" }` ne fait PAS ce qu'on croit** : ça pose l'en-tête HTTP, ça ne change **pas** la sérialisation du corps — htmx encode toujours un `<form>` en `application/x-www-form-urlencoded` par défaut, quel que soit le Content-Type déclaré. Sans l'extension htmx `json-enc` (non vendorisée dans ce projet), une route qui appelle `request.json()` échoue silencieusement sur des octets form-encodés étiquetés JSON. `contacts_demo_app.py::create_contact` lit donc de vraies données de formulaire (`Form(...)`), pas un corps JSON — et `contacts_demo.dsl` omet délibérément ce header.
+
+### `copy`/`patch` — trois bugs réels trouvés en enregistrant une vraie copie/patch pour la première fois
+
+Les tests xdsl historiques ne comparaient que du **texte compilé**, jamais un vrai enregistrement/rendu via `QwebRegistry` — exactement le même angle mort qui avait déjà laissé passer le piège `ReceiveSpec.type`/discriminant JSON (voir plus bas). Trois bugs dormaient depuis le début :
+
+1. **`patch` ne posait jamais de `t-name`** — le moteur QWeb exige `<template>` toujours nommé, même pour un patch extension (jamais résolu par nom, mais quand même requis par le parseur). `QwebRegistry.register_source` plantait (`<template> missing required t-name`) dès qu'on essayait d'enregistrer un vrai `patch`. Corrigé : nom synthétique auto-généré (`{package_id}.__patch{n}__`).
+2. **`copy X as Y { contenu littéral }` compilait un XML valide, s'enregistrait sans erreur, et ne faisait STRICTEMENT RIEN au rendu.** `xweb/engine/inherit.py::extract_patch()` ne lit **que** les enfants `<xpath>` d'un `<template t-inherit-mode="primary">` — tout le reste du corps (l'exemple qui était dans `docs/dsl-design.md` lui-même, `div { class: "login-form" slot }`) est silencieusement ignoré, la cible ressort inchangée. **Corrigé structurellement** : `copy` n'accepte plus que des blocs `xpath` (même grammaire que `patch`), un corps littéral lève maintenant une `ParseError` explicite au parse plutôt que de compiler dans le vide.
+3. **`xpath { attributes: { clé: "valeur" } }` générait `<a clé="valeur"/>`** — le moteur attend exclusivement `<attribute name="clé">valeur</attribute>` (`extract_patch` fait `xp.findall("attribute")`, un `<a .../>` lui est invisible). Encore un enregistrement sans erreur, sans le moindre effet. Corrigé ; la syntaxe DSL réelle est `attributes: a { clé: "valeur" }` (un élément dont chaque attribut devient un `<attribute>`) — le dict littéral `attributes: { clé: "valeur" }` documenté dans une version antérieure de `docs/dsl-design.md` **n'a jamais été implémenté**.
+
+Une fois enregistrée, une copie est un template comme un autre — `patch` peut la cibler par son nom, sans distinction avec un template de base (`xdsl/tests/test_compiler.py::TestCopyEndToEnd`, vérifié bout en bout).
+
+### `channel`/`use_channel:` — bootstrap SSE/WS déclaratif, données live
+
+```qml
+data contact_form { count: int @min(0) }
+
+channel contacts_feed {
+    url: "/stream"
+    channels: ["chat", "notif"]
+    transport: "sse"
+    connect_timeout_ms: 5000
+    validate: "contact_form"
+    persist: "last_contact"
+    onmessage {
+        bind: { "#counter": "count" }
+        refresh: "#contacts-table"
+        event: "contacts:changed"
+    }
+}
+component p { div { use_channel: contacts_feed  span { id: "counter"  "0" } } }
+```
+
+Sucre déclaratif au-dessus de `xweb/static/live_channel.js` (SSE/WS unifiés) — `use_channel: nom` sur un élément (`Compiler._resolve_use_channel`, `Compiler._write_channel_bootstrap`) émet un `<script>` juste après lui qui construit `new XwebLiveChannel({url, channels, transport, connectTimeoutMs, onMessage})`. `onMessage`, dans l'ordre : (1) si `validate:` posé, bloque tout le reste si `window.XwebValidate(nom, data).valid` est faux ; (2) `bind:` écrit chaque champ en `textContent` (jamais `innerHTML`) ; (3) `refresh:` déclenche `htmx.trigger(cible, event, data)` — jamais un rendu JSON→HTML côté client, même décision d'architecture que `endpoint`/`receive` (aucun runtime QWeb dans le navigateur) ; (4) `persist:` écrit dans `xweb/static/storage.js`. `use_channel: nom_inconnu` et `validate: "schéma_inconnu"` lèvent tous deux `CompileError` à la compilation — jamais un abonnement ou un export de schéma silencieusement absent.
+
+**`validate:` exporte le schéma `data` réel en JSON**, colocalisé dans le même `<script>` (`window.XWEB_SCHEMAS["nom"] = {champ: [[règle, [args]], ...]}`, même forme que `DataField.decorators`) — garanti disponible avant que `onMessage` ne puisse s'exécuter (assignation synchrone juste avant `new XwebLiveChannel`). `xweb/static/validators.js` (nouveau fichier) est un port JS du même ensemble fermé de règles que `xdsl/validators.py` (`required`/`min_length`/`max_length`/`min`/`max`/`email`/`pattern`/`in`, mêmes messages français) et expose `window.XwebValidate(nom, data) -> {valid, errors}` ; parité prouvée mécaniquement (pas relue) par `npm run verify:validators` — un script Python (`scripts/validators_fixture.py`) fait tourner les **vrais** validators Python sur un jeu de vecteurs et écrit les résultats attendus en JSON, qu'un script Node rejoue contre le **vrai** `validators.js`. **C'est de l'UX, jamais de la sécurité** : un client hostile contourne trivialement cette validation ; la seule qui compte reste `validate_dict()` côté serveur sur tout ce qui arrive par `endpoint`/`receive`.
+
+La page doit charger `live_channel.js` (+ `storage.js` si `persist:`, + `validators.js` si `validate:`) elle-même — jamais injecté par le DSL, même contrat que `htmx.min.js`. Bout-en-bout (vrai XML compilé, vrai `QwebRegistry.render()`, vrai DOM jsdom exécutant le `<script>` généré, vrai `storage.js`/`validators.js`, jamais un mock d'`XwebValidate` sur la dernière vérification) : `npm run verify:channel-dsl` (`scripts/render_channel_fixture.py` + `scripts/verify-channel-dsl.mjs`). Couverture unitaire : `xdsl/tests/test_parser.py::TestParserChannel`, `xdsl/tests/test_compiler.py::TestChannel`/`TestChannelEndToEnd`, `xdsl/tests/test_serialize.py::test_channel_roundtrip` (même piège tuple/liste que `DataField.decorators` — `ChannelOnMessage.bindings` est un `list[tuple[str,str]]`, round-trippe en liste de listes via JSON, comparaison par recompilation plutôt qu'égalité stricte de dataclass, voir `test_data_and_endpoint_roundtrip`).
+
+**`onmessage { dispatch: true }`** — la porte de sortie vers du hyperscript/JS arbitraire, SANS ouvrir `onmessage {}` lui-même à du code libre (grammaire toujours fermée : `bind`/`refresh`/`event`/`dispatch`, une clé inconnue lève `ParseError`, `_parse_channel_onmessage`). Diffuse, en plus de `bind:`/`refresh:`/`persist:`, un vrai `document.dispatchEvent(new CustomEvent(event_name, {detail:{channel,data}}))` — `event_name` est le MÊME champ `event:` (ou son défaut `"{channel}:message"`) que `refresh:` utilise déjà pour `htmx.trigger()`, un seul champ pour les deux mécanismes. N'importe quel élément récupère alors le message via l'attribut `_` **déjà supporté partout ailleurs dans le DSL** (`_: on {event} from document ...` ou `_ { ... }` en mode bloc si multi-ligne — le mode `_: ...` s'arrête au premier `\n`, piège trouvé en écrivant le fixture de vérification, voir `xdsl/parser.py::_read_hyperscript`) : `event.detail.channel`/`event.detail.data` sont directement lisibles, aucune nouvelle syntaxe. Fonctionne identiquement sur SSE et WS (même code `onMessage` généré des deux côtés) — vérifié bout-en-bout avec du VRAI `_hyperscript.min.js` (`window._hyperscript.processNode(document.body)` après chargement, un `<script>` embarqué dans le HTML testé exige `runScripts: "outside-only"` + eval contrôlé, jamais `"dangerously"`, sinon les bootstraps s'exécutent AVANT que la lib hyperscript ne soit chargée) contre un vrai serveur SSE+WS, sur deux `channel {}` séparés (un par transport) simultanément, par `npm run verify:channel-dispatch`. `contacts_demo.dsl` l'utilise pour un flash `.badge-primary` sur le compteur de contacts — vérifié contre le vrai serveur de démo (`npm run verify:contacts-channel`, poll plutôt que `sleep` fixe pour la disparition de la classe après le `wait 400ms`, la latence réseau réelle dépasse parfois une marge fixe optimiste).
+
+### Autres pièges trouvés en construisant `xdsl`
+
+- **`ReceiveSpec.type`/`DataField.type` écrasaient silencieusement le discriminant `"type"` du sérialiseur JSON** (`xdsl/serialize.py`, qui pose `{"type": <nom de la dataclass>, ...}` sur chaque nœud) — un champ dataclass qui se nomme aussi `type` gagne la clé à la sérialisation, cassant la désérialisation (`AttributeError: 'dict' object has no attribute 'target'`). Renommés `kind`/`value_type`. **Aucun futur champ de nœud xdsl ne doit s'appeler `type`.**
+- **`@in(["a","b"])` échouait à parser** — `in` est un mot-clé réservé (`for x in list`), pas un `IDENT` ; `_parse_decorators` doit accepter explicitement `TokenKind.IN` en plus d'un `IDENT` pour le nom d'un décorateur.
+- **`tr { ... }` (balise HTML `<tr>`) était injoignable** — `tr` est par ailleurs le mot-clé de traduction (`tr "texte"`). Désambiguïsé sur ce qui suit `tr` : `{` juste après → balise `<tr>`, sinon → directive de traduction (`_parse_node`, sur `TokenKind.TR`).
+- **`|` (chaînage de filtre QWeb, `price | money`) était silencieusement avalé par le lexer** en dehors d'une interpolation `${...}` — `price | money` devenait `price money`, un `eval()` Python invalide, aucune erreur au parse. `TokenKind.PIPE` ajouté ; `_read_expression` reconnaît maintenant `expr | filtre[:arg]` (un seul argument par filtre en expression nue — un filtre multi-arguments a besoin d'une virgule de premier niveau, ambiguë avec un séparateur d'item de `class:[...]`, écrire ce cas dans `${...}` à la place).
+- **Injection hyperscript/JS via `${...}` dans `_`/`hx-vals`** — l'échappement HTML de l'attribut protège la frontière HTML, pas la grammaire imbriquée (hyperscript, ou JS pour `hx-vals: "js:..."`) : une valeur contenant un guillemet redevient un guillemet réel une fois décodée par le navigateur, cassant la chaîne et exécutant du code injecté. Deux nouveaux filtres QWeb (`xweb/engine/filters.py`, set fermé) protègent : `hs` (échappe pour un contexte hyperscript) et `js` (`json.dumps`, pour un contexte JS). `xdsl/compiler.py::_CODE_ATTR_FILTERS` les chaîne automatiquement sur toute interpolation dans `_`/`hx-vals` — l'auteur DSL n'a rien à faire.
+- **`xweb-popover`/`xweb-popup`/`xweb-datepicker` (id par défaut littéral, fixe) faisaient collision entre plusieurs instances sans id explicite sur une même page** — `#id` résout toujours vers le PREMIER élément portant cet id dans le DOM, donc le 2ᵉ déclencheur agissait sur le panneau du 1ᵉʳ. Corrigé dans les trois composants : ciblage par relation DOM (`the next .popover-panel`) au lieu d'un id — `id` redevient un prop purement cosmétique (hook CSS/JS externe), plus jamais utilisé en interne pour le mécanisme ouverture/fermeture. Vérifié en jsdom contre le vrai `_hyperscript.min.js` (2 instances, clic sur la 2ᵉ, seul son propre panneau bouge).
+- **`hx-target` est HÉRITÉ en htmx, et `xweb.shell` en pose un sur `<body>`** (`hx-target="#xweb-content"`, pour `hx-boost`). Un élément qui fait sa propre requête htmx SANS poser son propre `hx-target` hérite silencieusement celui-là — `#contacts-table` (`hx-trigger="load"`, sans `hx-target` à lui) remplaçait TOUT `#xweb-content` (formulaire compris) par le seul contenu de `/contacts/table`, dès le premier chargement de la page. Vérifié en rejouant `htmx.min.js` réel en jsdom (`XPathExpression.evaluate` patché — htmx en a besoin en interne, jsdom exige un type de résultat explicite que htmx ne fournit pas toujours). **Tout élément qui fait sa propre requête htmx dans une page sous `xweb.shell` doit poser son propre `hx-target` explicite**, même en auto-référence (`hx-target="#mon-propre-id"`), sinon il hérite silencieusement `#xweb-content`.
+- **Une route custom hors `render_xweb_template`/`mount_xweb_page` doit répliquer à la main le contrat `HX-Request`** — `xweb.shell` boost la navigation interne (clic sur un lien nav → `GET` en AJAX avec `HX-Request: true`). Une route qui ignore cet en-tête et renvoie toujours la page complète (comme `contacts_demo_app.py::index` avant correction) fait injecter par htmx un `<html>` entier dans `#xweb-content` — DOM cassé, le formulaire "disparaît" alors qu'il est bien présent dans le HTML renvoyé. Contrat à répliquer : `HX-Request: true` → répondre `<title>...</title>` + fragment seul, jamais le document complet (`xweb/mount.py::render_xweb_template` le fait déjà pour toute page qui passe par lui ; une route qui construit sa propre réponse hors de ce chemin doit le faire elle-même).
+
+### `<xweb:nom>` — sucre syntaxique pour `t-call`, PAS xdsl
+
+Différent de `xdsl` : c'est un raccourci XML **natif au moteur QWeb** (`xweb/engine/parser.py`), désucré au parse, avant que le compilateur/registre/héritage ne voient quoi que ce soit. `<xweb:button variant="primary">…</xweb:button>` ⇒ `<t t-call="xweb.button" variant="primary">…</t>` (sans point → `xweb.<nom>` ; avec point → n'importe quelle cible du registre). Les deux syntaxes coexistent dans un même fichier. Un nom invalide ou une cible absente du registre est une `TemplateSyntaxError`/`TemplateError` au parse/enregistrement, jamais un silence (`tests/test_xweb_shorthand.py`).
+
+### Discipline de vérification spécifique à xdsl
+
+Les bugs `copy`/`t-name` ci-dessus n'ont été trouvés qu'en poussant un test au-delà de "le texte compilé contient la bonne sous-chaîne" jusqu'à "`QwebRegistry.register_source()` + `render()` réels" — même principe que §13, appliqué à xdsl lui-même. `xdsl/tests/test_compiler.py::TestCopyEndToEnd`/`TestDslToEngineEndToEnd` existent précisément pour ce palier. Pour tout ce qui touche `_`/hyperscript généré par xdsl (`use:`, `endpoint`), le palier 5 de §13 (jsdom + vrai `htmx.min.js`/`_hyperscript.min.js` contre un vrai serveur) reste le seul qui aurait attrapé le bug `hx-target` hérité — un test texte-seul sur le XML compilé ne peut structurellement pas le voir.
+
+Palier supplémentaire pour du JS **dupliqué** entre deux langages (`xdsl/validators.py` ↔ `xweb/static/validators.js`, même règles réimplémentées à la main de chaque côté) : ni la lecture croisée ni un test unitaire par langage ne prouvent la parité — les deux peuvent diverger silencieusement sur un cas limite (troncature, coercition de type, message d'erreur). Le seul test qui le prouve fait tourner le moteur **source de vérité** (Python) sur un jeu de vecteurs, écrit les résultats en JSON, puis rejoue le **même** JSON contre le port (JS) et compare — `scripts/validators_fixture.py` + `scripts/verify-validators.mjs`. À refaire pour toute future logique dupliquée serveur/client de ce genre.
 
 ---
 

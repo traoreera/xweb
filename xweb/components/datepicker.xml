@@ -8,6 +8,21 @@
     l'appelant via xweb/calendar.py::month_grid() — ce composant ne fait
     aucune arithmétique de date lui-même (aucun builtin dans les
     expressions QWeb, CLAUDE.md).
+
+    Le champ ouvre son panneau par relation DOM ("the next .popover-panel"),
+    jamais par id — même correction que xweb.popover/xweb.popup (voir
+    xweb/components/popover.xml), pour la même raison : la valeur par
+    défaut de `id` ('xweb-datepicker') est partagée par toute instance qui
+    ne la précise pas, et `#{{id}}-panel` résoudrait toujours vers le
+    PREMIER champ dans le DOM.
+
+    LIMITE CONNUE, non corrigée ici (hors scope de ce correctif) : la
+    synchronisation interne value/input et l'écoute `calendar:select`
+    (ci-dessous) référencent encore `#{{id}}-value`/`#{{id}}-input`/
+    `#{{id}}-calendar` par id — donc DEUX xweb.datepicker sans id explicite
+    sur la même page restent sujets au même défaut (le mauvais champ se
+    mettrait à jour). Contourner en passant un `id` explicite par instance
+    tant que ce n'est pas traité.
 -->
 <template t-name="xweb.datepicker">
     <t t-set="id" t-default="'xweb-datepicker'"/>
@@ -22,7 +37,7 @@
         <input type="hidden" t-att-name="name" t-attf-id="{{id}}-value" t-att-value="value"/>
         <input type="text" readonly="readonly" t-attf-id="{{id}}-input" class="input input-bordered w-full cursor-pointer"
                t-att-placeholder="placeholder" t-att-value="value_label or value"
-               t-attf-_="on click toggle .popover-open on #{{id}}-panel then halt the event"/>
+               _="on click toggle .popover-open on the next .popover-panel then halt the event"/>
         <div t-attf-id="{{id}}-panel" class="popover-panel absolute top-full mt-2 z-40"
              t-attf-_="on click from elsewhere remove .popover-open from me
                        on keyup[key=='Escape'] from the document remove .popover-open from me

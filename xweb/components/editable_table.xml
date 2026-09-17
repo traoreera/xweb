@@ -17,9 +17,10 @@
     <t t-set="add_column_url" t-default="''"/>
     <t t-set="rename_column_url" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
+    <t t-set="name" t-default="''"/>
     
     <!-- Conteneur : zéro bordure visible, juste padding interne -->
-    <div t-attf-class="editable-table overflow-visible {{extra_class}}">
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="editable-table overflow-visible {{extra_class}}">
         <table class="table table-zebra" style="--tblr-zebra-opacity: 0;">
             <thead>
                 <tr>
@@ -69,13 +70,15 @@
 <template t-name="xweb.editable_table_header_cell">
     <t t-set="col" t-default="{}"/>
     <t t-set="rename_column_url" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
     <t t-if="not rename_column_url">
-        <th class="font-medium text-base-content/70 text-xs uppercase tracking-wide">
+        <th t-att-name="name or None" t-att-id="id or None" class="font-medium text-base-content/70 text-xs uppercase tracking-wide">
             <t t-esc="col.get('label', '')"/>
         </th>
     </t>
     <t t-else="1">
-        <th class="font-medium text-base-content/70 text-xs uppercase tracking-wide">
+        <th t-att-name="name or None" t-att-id="id or None" class="font-medium text-base-content/70 text-xs uppercase tracking-wide">
             <span class="cell-display inline px-2 py-1 rounded hover:bg-base-content/5 cursor-text"
                   _="on click hide me then show (next &lt;input/&gt;) then call (next &lt;input/&gt;).focus() then call (next &lt;input/&gt;).select()">
                 <t t-esc="col.get('label', '')"/>
@@ -100,6 +103,8 @@
     <t t-set="save_url" t-default="''"/>
     <t t-set="delete_row_url" t-default="''"/>
     <t t-set="reorder_url" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
     
     <!-- Ligne : hover sur toute la ligne, drag handle visible seulement au hover -->
     <tr t-att-id="row.get('id')" 
@@ -176,7 +181,9 @@
     <t t-set="row" t-default="{}"/>
     <t t-set="col" t-default="{}"/>
     <t t-set="save_url" t-default="''"/>
-    <td class="p-0">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <td t-att-name="name or None" t-att-id="id or None" class="p-0">
         <!-- Cellule texte : padding généreux, zéro bordure, hover discret -->
         <span class="cell-display block px-3 py-2 rounded cursor-text min-h-[36px] text-base-content/90 hover:bg-base-content/[0.03] transition-colors"
               _="on click hide me then show (next &lt;input/&gt;) then call (next &lt;input/&gt;).focus() then call (next &lt;input/&gt;).select()">
@@ -202,7 +209,9 @@
     <t t-set="save_url" t-default="''"/>
     <t t-set="current" t-value="row.get(col.get('key'), '')"/>
     <t t-set="options" t-value="col.get('options') or []"/>
-    <td class="p-0">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <td t-att-name="name or None" t-att-id="id or None" class="p-0">
         <input type="hidden" 
                t-attf-id="cell-{{row.get('id')}}-{{col.get('key')}}" 
                t-att-value="current"
@@ -253,7 +262,9 @@
     <t t-set="row" t-default="{}"/>
     <t t-set="col" t-default="{}"/>
     <t t-set="save_url" t-default="''"/>
-    <td class="text-center p-0">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <td t-att-name="name or None" t-att-id="id or None" class="text-center p-0">
         <input type="checkbox" 
                class="checkbox checkbox-xs rounded" 
                style="accent-color: var(--color-primary);"

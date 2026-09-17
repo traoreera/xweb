@@ -20,7 +20,9 @@
     <t t-set="current" t-default="-1"/>
     <t t-set="vertical" t-default="False"/>
     <t t-set="extra_class" t-default="''"/>
-    <ul t-attf-class="steps {{ 'steps-vertical' if vertical else 'steps-horizontal' }} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <ul t-att-name="name or None" t-att-id="id or None" t-attf-class="steps {{ 'steps-vertical' if vertical else 'steps-horizontal' }} {{extra_class}}">
         <t t-foreach="items" t-as="item">
             <li t-attf-class="step {{ 'step-primary' if item_index &lt;= current else '' }}">
                 <t t-esc="item['label']"/>

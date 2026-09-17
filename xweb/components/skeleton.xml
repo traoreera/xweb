@@ -20,5 +20,7 @@
     <t t-set="height" t-default="'h-4'"/>
     <t t-set="circle" t-default="False"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="skeleton {{width}} {{height}} {{ 'rounded-full' if circle else '' }} {{extra_class}}"></div>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="skeleton {{width}} {{height}} {{ 'rounded-full' if circle else '' }} {{extra_class}}"></div>
 </template>

@@ -132,6 +132,28 @@ def test_popover_position_top_uses_bottom_full_class(registry):
     assert "top-full" not in html
 
 
+def test_popover_trigger_targets_its_panel_by_dom_relation_not_by_id(registry):
+    """Régression : le déclencheur ciblait `#{{id}}-panel` — deux
+    popovers SANS id explicite sur une même page (donc partageant le
+    même id par défaut, `xweb-popover`) faisaient collision, `#id`
+    résolvant toujours vers le PREMIER élément portant cet id : cliquer
+    le 2e déclencheur bougeait le panneau du 1er (vérifié en jsdom contre
+    le vrai _hyperscript.min.js vendorisé). "the next .popover-panel" ne
+    dépend d'aucun id, donc le `_` du bouton est désormais identique quel
+    que soit `id` — la preuve la plus directe qu'aucune référence par id
+    ne subsiste dans ce mécanisme."""
+    html_with_id = registry.render("xweb.popover", {"id": "p1", "slot": "x"})
+    html_without_id = registry.render("xweb.popover", {"slot": "x"})
+    assert "the next .popover-panel" in html_with_id
+    assert "#p1-panel" not in html_with_id
+    assert "#xweb-popover-panel" not in html_without_id
+
+    def trigger_script(html: str) -> str:
+        return html.split('_="', 1)[1].split('"', 1)[0]
+
+    assert trigger_script(html_with_id) == trigger_script(html_without_id)
+
+
 # ---------------------------------------------------------------------
 # xweb.combobox — rendu (filtrage/sélection vérifiés en jsdom)
 # ---------------------------------------------------------------------
@@ -224,3 +246,16 @@ def test_datepicker_renders_input_and_embeds_the_calendar_with_a_derived_id(regi
     assert 'id="dp1-panel"' in html
     assert 'id="dp1-calendar"' in html  # t-att-id="id + '-calendar'" sur le t-call
     assert 'value="2026-09-15"' in html
+
+
+def test_datepicker_input_targets_its_panel_by_dom_relation_not_by_id(registry):
+    """Même régression, même correction que xweb.popover (voir ce
+    fichier) : le champ visible ciblait `#{{id}}-panel`, collision entre
+    deux instances sans id explicite. "the next .popover-panel" rend le
+    déclencheur indépendant de `id`."""
+    grid = month_grid(2026, 9)
+    html_with_id = registry.render("xweb.datepicker", {"id": "dp1", **grid})
+    html_without_id = registry.render("xweb.datepicker", {**grid})
+    assert "the next .popover-panel" in html_with_id
+    assert "#dp1-panel" not in html_with_id
+    assert "#xweb-datepicker-panel" not in html_without_id

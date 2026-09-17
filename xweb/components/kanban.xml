@@ -27,8 +27,10 @@
     <t t-set="extra_class" t-default="''"/>
     <t t-set="add_card_url" t-default="''"/>
     <t t-set="delete_card_url" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
 
-    <div t-attf-class="kanban flex gap-3 overflow-x-auto pb-2 {{extra_class}}">
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="kanban flex gap-3 overflow-x-auto pb-2 {{extra_class}}">
         <t t-foreach="columns" t-as="col">
             <div class="kanban-column flex-none w-80 flex flex-col gap-2 group/column"
                  t-att-data-column-id="col['id']"
@@ -98,8 +100,10 @@
     <t t-set="card" t-default="{}"/>
     <t t-set="move_url" t-default="''"/>
     <t t-set="delete_url" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
 
-    <div class="kanban-card group/card relative bg-base-100 border border-base-content/[0.08] rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-base-content/[0.15] hover:bg-base-content/[0.02] transition-all duration-150"
+    <div t-att-name="name or None" class="kanban-card group/card relative bg-base-100 border border-base-content/[0.08] rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-base-content/[0.15] hover:bg-base-content/[0.02] transition-all duration-150"
          draggable="true"
          t-att-id="card['id']"
          t-att-hx-post="move_url or None"

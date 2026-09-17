@@ -16,3 +16,6 @@ CLAUDE.md
 site/
 dist/
 .verify-editable-table.html
+.verify-channel-dsl.html
+.verify-channel-dispatch.html
+.verify-validators.json

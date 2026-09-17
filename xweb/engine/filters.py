@@ -32,6 +32,7 @@ FILTER_NAMES: frozenset[str] = frozenset({
     "length", "count", "first", "last",
     "join", "default", "d", "default_if_empty", "yesno",
     "urlencode",
+    "hs", "js",
 })
 
 
@@ -262,6 +263,48 @@ def _urlencode(value: Any, *args: Any, **kwargs: Any) -> str:
     return _up.quote_plus(str(value))
 
 
+def _hs(value: Any, *args: Any, **kwargs: Any) -> str:
+    """Échappe une valeur pour une insertion sûre à l'intérieur d'une
+    chaîne _hyperscript (attribut `_="..."`, typiquement via un
+    `t-attf-_="on click log \\"...{{x | hs}}...\\""`).
+
+    L'échappement HTML appliqué ensuite par le moteur (escape() sur
+    l'attribut entier) protège la frontière HTML — impossible de fermer
+    l'attribut ou d'injecter une balise — mais PAS la frontière imbriquée :
+    une fois les entités décodées par le navigateur, un guillemet contenu
+    dans la valeur redevient un guillemet réel et referme prématurément la
+    chaîne hyperscript, laissant le reste interprété comme du code
+    hyperscript arbitraire (DOM, fetch, js() ...). Ce filtre échappe donc
+    en plus antislash/guillemets/retours à la ligne AVANT cet échappement
+    HTML — défense en profondeur sur une frontière que t-esc/t-att ne
+    couvrent pas. Voir aussi `js` pour le même problème côté `hx-vals`."""
+    if value is None:
+        return ""
+    s = str(value)
+    s = s.replace("\\", "\\\\")
+    s = s.replace('"', '\\"').replace("'", "\\'")
+    s = s.replace("\n", "\\n").replace("\r", "\\r")
+    return s
+
+
+def _js(value: Any, *args: Any, **kwargs: Any) -> str:
+    """Représentation JSON sûre d'une valeur pour un contexte JS/htmx —
+    typiquement `hx-vals="{{ ... }}"` ou `hx-vals="js:{id: {{x | js}}}"`.
+
+    Même raisonnement que `hs` : `hx-vals` est reparsé comme JSON (ou
+    évalué comme JS avec le préfixe `js:`) par htmx après décodage HTML,
+    donc l'échappement HTML seul ne protège pas cette frontière — une
+    valeur contenant `"`/`}` casserait la structure et pourrait faire
+    exécuter du JS arbitraire. `json.dumps` quote/échappe correctement les
+    chaînes et laisse nombres/bool tels quels."""
+    import json as _json
+
+    try:
+        return _json.dumps(value)
+    except (TypeError, ValueError):
+        return _json.dumps(str(value))
+
+
 # name -> callable. Set fermé : ajouter un filtre = ajouter une entrée ICI,
 # jamais via un plugin.
 _FILTERS: dict[str, Any] = {
@@ -288,6 +331,8 @@ _FILTERS: dict[str, Any] = {
     "default_if_empty": _default_if_empty,
     "yesno": _yesno,
     "urlencode": _urlencode,
+    "hs": _hs,
+    "js": _js,
 }
 
 

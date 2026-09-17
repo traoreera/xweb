@@ -1,0 +1,296 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "xdsl",
+  "scopeName": "source.xdsl",
+  "fileTypes": ["dsl"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#file-directives" },
+    { "include": "#top-level-declarations" },
+    { "include": "#hyperscript" },
+    { "include": "#decorators" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#booleans" },
+    { "include": "#i18n-call" },
+    { "include": "#tags-and-attributes" },
+    { "include": "#operators" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.xdsl",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.xdsl",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+
+    "file-directives": {
+      "patterns": [
+        {
+          "comment": "@include \"xweb.shell\" — directive de layout, une seule fois en tête de fichier (xdsl/parser.py::_parse_include)",
+          "name": "meta.directive.include.xdsl",
+          "match": "(@include)\\s+(\"[^\"]*\"|'[^']*')",
+          "captures": {
+            "1": { "name": "keyword.control.directive.xdsl" },
+            "2": { "name": "string.quoted.xdsl" }
+          }
+        }
+      ]
+    },
+
+    "top-level-declarations": {
+      "patterns": [
+        {
+          "comment": "component NOM { } / patch CIBLE { } / copy SOURCE as ALIAS { } / data NOM { } / endpoint NOM { } / channel NOM { }",
+          "match": "\\b(component|patch|copy|data|endpoint|channel)\\b\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)?",
+          "captures": {
+            "1": { "name": "keyword.control.declaration.xdsl" },
+            "2": { "name": "entity.name.type.xdsl" }
+          }
+        },
+        {
+          "comment": "copy SOURCE as ALIAS — le nom qui suit `as`",
+          "match": "\\b(as)\\b\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)?",
+          "captures": {
+            "1": { "name": "keyword.control.xdsl" },
+            "2": { "name": "entity.name.type.alias.xdsl" }
+          }
+        },
+        {
+          "comment": "import { a, b } from \"xweb\"",
+          "match": "\\b(import)\\b",
+          "name": "keyword.control.import.xdsl"
+        },
+        {
+          "match": "\\b(from)\\b",
+          "name": "keyword.control.import.xdsl"
+        },
+        {
+          "comment": "structures de contrôle",
+          "match": "\\b(if|elif|else|for|in)\\b",
+          "name": "keyword.control.flow.xdsl"
+        },
+        {
+          "comment": "héritage / xpath (t-inherit) — patch/copy uniquement",
+          "match": "\\b(xpath|inside|replace|before|after|attributes|extension|primary|priority)\\b",
+          "name": "keyword.control.inherit.xdsl"
+        },
+        {
+          "comment": "props: / style: — blocs déclaratifs d'un composant",
+          "match": "\\b(props|style)\\b(?=\\s*:)",
+          "name": "keyword.other.block.xdsl"
+        },
+        {
+          "comment": "slot / raw — directives de contenu (xdsl/parser.py)",
+          "match": "\\b(slot|raw)\\b",
+          "name": "keyword.other.content.xdsl"
+        },
+        {
+          "comment": "tr \"texte\" — directive de traduction (PAS la balise <tr>, désambiguïsée par le parser via lookahead sur `{`)",
+          "match": "\\btr\\b(?!\\s*\\{)",
+          "name": "keyword.other.translate.xdsl"
+        }
+      ]
+    },
+
+    "decorators": {
+      "patterns": [
+        {
+          "comment": "@required @min_length(3) @in([\"a\",\"b\"]) — xdsl/validators.py::BUILTIN_VALIDATORS, ensemble FERMÉ",
+          "match": "(@)(required|min_length|max_length|min|max|email|pattern|in)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.decorator.xdsl" },
+            "2": { "name": "entity.name.function.decorator.xdsl" }
+          }
+        },
+        {
+          "comment": "un décorateur qui ne serait pas dans l'ensemble fermé (xdsl.compiler.CompileError à la compilation, pas une erreur de coloration)",
+          "match": "(@)([A-Za-z_][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": { "name": "punctuation.definition.decorator.xdsl" },
+            "2": { "name": "invalid.illegal.unknown-decorator.xdsl" }
+          }
+        }
+      ]
+    },
+
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.xdsl",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" },
+            { "include": "#string-interpolation" }
+          ]
+        },
+        {
+          "name": "string.quoted.single.xdsl",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            { "include": "#string-escapes" },
+            { "include": "#string-interpolation" }
+          ]
+        }
+      ]
+    },
+    "string-escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.xdsl",
+          "match": "\\\\(n|t|\\\\|'|\")"
+        }
+      ]
+    },
+    "string-interpolation": {
+      "comment": "${expr} dans une chaîne — repris par le COMPILATEUR (pas le lexer) en t-attf-*/t-esc QWeb à la compilation (xdsl/compiler.py::_to_qweb_interp)",
+      "name": "meta.embedded.line.xdsl",
+      "begin": "\\$\\{",
+      "beginCaptures": { "0": { "name": "punctuation.section.embedded.begin.xdsl" } },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.embedded.end.xdsl" } },
+      "patterns": [
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#booleans" },
+        {
+          "name": "keyword.control.flow.xdsl",
+          "match": "\\b(if|else|for|in|and|or|not)\\b"
+        },
+        {
+          "name": "source.xdsl.embedded.expression"
+        }
+      ]
+    },
+
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.xdsl",
+          "match": "(?<![\\w.])-?\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+
+    "booleans": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.xdsl",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+
+    "i18n-call": {
+      "comment": "_('Bonjour ' + name) — injecté dans le contexte de rendu par xweb/mount.py, jamais un mot-clé xdsl (docs/i18n.md). Distingué de l'attribut hyperscript `_ : .../_ { ... }` par le `(` qui suit immédiatement.",
+      "match": "\\b(_)(?=\\()",
+      "name": "support.function.i18n.xdsl"
+    },
+
+    "hyperscript": {
+      "comment": "Attribut _ brut — deux modes, xdsl/parser.py::_read_hyperscript. Le corps N'EST PAS du xdsl : tokenisation légère (mots-clés hyperscript usuels), pas une grammaire complète.",
+      "patterns": [
+        {
+          "comment": "Mode ligne : _ : ... jusqu'à la fin de ligne (ou } d'élément)",
+          "match": "(_)\\s*(:)\\s*(.*)$",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.hyperscript.xdsl" },
+            "2": { "name": "punctuation.separator.key-value.xdsl" },
+            "3": { "patterns": [{ "include": "#hyperscript-body" }] }
+          }
+        },
+        {
+          "comment": "Mode bloc : _ { ... } — newlines significatives, profondeur d'accolades",
+          "name": "meta.embedded.block.hyperscript.xdsl",
+          "begin": "(_)\\s*(\\{)",
+          "beginCaptures": {
+            "1": { "name": "entity.other.attribute-name.hyperscript.xdsl" },
+            "2": { "name": "punctuation.section.embedded.begin.xdsl" }
+          },
+          "end": "\\}",
+          "endCaptures": { "0": { "name": "punctuation.section.embedded.end.xdsl" } },
+          "patterns": [{ "include": "#hyperscript-body" }]
+        }
+      ]
+    },
+    "hyperscript-body": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        {
+          "name": "keyword.control.hyperscript.xdsl",
+          "match": "\\b(on|from|end|if|else|unless|repeat|while|until|then)\\b"
+        },
+        {
+          "name": "keyword.other.hyperscript.xdsl",
+          "match": "\\b(wait|put|into|add|remove|toggle|set|log|call|trigger|send|to|go|fetch|show|hide|halt|throw|increment|decrement)\\b"
+        },
+        {
+          "name": "variable.language.hyperscript.xdsl",
+          "match": "\\b(me|my|I|it|its|event|target|detail|result)\\b"
+        },
+        {
+          "name": "entity.name.tag.css-selector.hyperscript.xdsl",
+          "match": "[.#][A-Za-z_-][A-Za-z0-9_-]*"
+        }
+      ]
+    },
+
+    "tags-and-attributes": {
+      "patterns": [
+        {
+          "comment": "nom { ... } — balise HTML brute ou appel de composant (xweb.button { }, auth.login { }, onmessage { }) : identifiant suivi (avec espace optionnel) de {. Lookahead pur (?=\\s*\\{) plutôt que \\s* consommé, sinon l'espace final hérite lui aussi du scope de balise.",
+          "match": "([A-Za-z_][A-Za-z0-9_-]*(?:[.:][A-Za-z_][A-Za-z0-9_-]*)*)(?=\\s*\\{)",
+          "name": "entity.name.tag.xdsl"
+        },
+        {
+          "comment": "attribut/champ : nom immédiatement suivi de `:` — couvre à la fois les props de composants xweb (id, class, hx-post...) ET les clés structurelles (url, method, onmessage, bind, refresh...) sans liste figée, elles évoluent au même rythme que le DSL",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_-]*)\\s*(?=:(?!=))",
+          "name": "entity.other.attribute-name.xdsl"
+        },
+        {
+          "comment": "?= — valeur par défaut d'une prop (props/Slots, docs/dsl-design.md)",
+          "match": "\\?=",
+          "name": "keyword.operator.assignment.default.xdsl"
+        }
+      ]
+    },
+
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.comparison.xdsl", "match": "[<>!=]=|[<>]" },
+        { "name": "keyword.operator.assignment.xdsl", "match": "=" },
+        { "name": "keyword.operator.pipe.xdsl", "match": "\\|" },
+        { "name": "keyword.operator.arrow.xdsl", "match": "->" },
+        { "name": "keyword.operator.arithmetic.xdsl", "match": "[+*/%-]" },
+        { "name": "keyword.operator.ternary.xdsl", "match": "\\?" },
+        { "name": "punctuation.accessor.xdsl", "match": "\\." }
+      ]
+    },
+
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.section.block.begin.xdsl", "match": "\\{" },
+        { "name": "punctuation.section.block.end.xdsl", "match": "\\}" },
+        { "name": "punctuation.section.group.begin.xdsl", "match": "\\(" },
+        { "name": "punctuation.section.group.end.xdsl", "match": "\\)" },
+        { "name": "punctuation.definition.array.begin.xdsl", "match": "\\[" },
+        { "name": "punctuation.definition.array.end.xdsl", "match": "\\]" },
+        { "name": "punctuation.separator.key-value.xdsl", "match": ":" },
+        { "name": "punctuation.separator.comma.xdsl", "match": "," },
+        { "name": "punctuation.terminator.statement.xdsl", "match": ";" }
+      ]
+    }
+  }
+}

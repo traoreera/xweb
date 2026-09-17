@@ -11,7 +11,9 @@
 <template t-name="xweb.list">
     <t t-set="items" t-default="[]"/>
     <t t-set="extra_class" t-default="''"/>
-    <ul t-attf-class="list bg-base-100 {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <ul t-att-id="id or None" t-attf-class="list bg-base-100 {{extra_class}}">
         <t t-foreach="items" t-as="item">
             <li class="list-row">
                 <t t-if="item.get('icon')">

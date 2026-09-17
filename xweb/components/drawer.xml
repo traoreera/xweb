@@ -14,6 +14,7 @@
     <t t-set="side_end" t-default="False"/>
     <t t-set="width" t-default="'w-72'"/>
     <t t-set="extra_class" t-default="''"/>
+    <t t-set="name" t-default="''"/>
     <div t-attf-class="drawer {{ 'drawer-end' if side_end else '' }} {{extra_class}}">
         <input t-att-id="id" type="checkbox" class="drawer-toggle"/>
         <div class="drawer-content">
@@ -38,7 +39,9 @@
 <template t-name="xweb.drawer_toggle">
     <t t-set="target" t-default="'xweb-drawer'"/>
     <t t-set="extra_class" t-default="'btn btn-square btn-ghost'"/>
-    <label t-att-for="target" t-attf-class="{{extra_class}}" aria-label="Ouvrir le panneau">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <label t-att-name="name or None" t-att-id="id or None" t-att-for="target" t-attf-class="{{extra_class}}" aria-label="Ouvrir le panneau">
         <t t-call="xweb.icon" name="menu" extra_class="size-5"/>
     </label>
 </template>

@@ -22,7 +22,9 @@
     <t t-set="extra_class" t-default="''"/>
     <t t-set="cols_class" t-value="{1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5', 6: 'grid-cols-6', 12: 'grid-cols-12'}.get(cols, 'grid-cols-2')"/>
     <t t-set="gap_class" t-value="{'none': 'gap-0', 'xs': 'gap-1', 'sm': 'gap-2', 'md': 'gap-4', 'lg': 'gap-6', 'xl': 'gap-8'}.get(gap, 'gap-4')"/>
-    <div t-attf-class="grid {{cols_class}} {{gap_class}} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="grid {{cols_class}} {{gap_class}} {{extra_class}}">
         <t t-out="slot"/>
     </div>
 </template>

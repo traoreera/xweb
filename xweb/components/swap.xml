@@ -26,7 +26,8 @@
     <t t-set="slot_on" t-default="None"/>
     <t t-set="slot_off" t-default="None"/>
     <t t-set="extra_class" t-default="''"/>
-    <label t-attf-class="swap {{ 'swap-flip' if flip else '' }} {{extra_class}}">
+    <t t-set="id" t-default="''"/>
+    <label t-att-id="id or None" t-attf-class="swap {{ 'swap-flip' if flip else '' }} {{extra_class}}">
         <input type="checkbox" t-att-name="name or None" t-att-checked="checked"/>
         <div class="swap-on"><t t-out="slot_on"/></div>
         <div class="swap-off"><t t-out="slot_off"/></div>

@@ -5,7 +5,9 @@
     <t t-set="horizontal" t-default="False"/>
     <t t-set="size" t-default="'md'"/>
     <t t-set="extra_class" t-default="'bg-base-100 rounded-box w-56'"/>
-    <ul t-attf-class="menu menu-{{size}} {{ 'menu-horizontal' if horizontal else '' }} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <ul t-att-id="id or None" t-attf-class="menu menu-{{size}} {{ 'menu-horizontal' if horizontal else '' }} {{extra_class}}">
         <t t-if="title"><li class="menu-title"><t t-esc="title"/></li></t>
         <t t-foreach="items" t-as="item">
             <li>

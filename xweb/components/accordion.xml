@@ -12,7 +12,8 @@
     <t t-set="name" t-default="'xweb-accordion'"/>
     <t t-set="variant" t-default="'arrow'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="flex flex-col gap-2 {{extra_class}}">
+    <t t-set="id" t-default="''"/>
+    <div t-att-id="id or None" t-attf-class="flex flex-col gap-2 {{extra_class}}">
         <t t-foreach="items" t-as="item">
             <details t-attf-class="collapse {{ 'collapse-' + variant if variant else '' }} bg-base-100 border border-base-300" t-att-name="name" t-att-open="item.get('open') or None">
                 <summary class="collapse-title font-semibold"><t t-esc="item['title']"/></summary>

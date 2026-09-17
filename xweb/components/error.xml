@@ -1,6 +1,8 @@
 <template t-name="xweb.error">
     <t t-set="extra_class" t-default="''"/>
-    <p t-attf-class="text-error text-sm flex items-center gap-1 mt-1 {{extra_class}}" role="alert">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <p t-att-name="name or None" t-att-id="id or None" t-attf-class="text-error text-sm flex items-center gap-1 mt-1 {{extra_class}}" role="alert">
         <t t-call="xweb.icon" name="error" extra_class="size-4 shrink-0"/>
         <span><t t-out="slot"/></span>
     </p>

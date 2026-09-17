@@ -8,7 +8,9 @@
         hx-swap-oob="beforeend:#xweb-toasts".
     -->
     <template t-name="xweb.toast_region">
-        <div id="xweb-toasts"
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+        <div t-att-name="name or None" t-att-id="id or None" id="xweb-toasts"
              class="toast toast-top toast-end z-50 pointer-events-none">
         </div>
     </template>
@@ -39,8 +41,9 @@
         <t t-set="message" t-default="''"/>
         <t t-set="level" t-default="'info'"/>
         <t t-set="dismiss_after" t-default="'5s'"/>
+        <t t-set="name" t-default="''"/>
 
-        <div t-att-id="id"
+        <div t-att-name="name or None" t-att-id="id"
              t-attf-class="alert shadow-lg pointer-events-auto max-w-sm {{ 'alert-success' if level == 'success' else '' }}{{ 'alert-warning' if level == 'warning' else '' }}{{ 'alert-error' if level == 'error' else '' }}{{ 'alert-info' if level == 'info' else '' }}"
              t-att-_="('on load wait ' + dismiss_after + ' then remove me') if dismiss_after else None">
 
@@ -91,8 +94,10 @@
     <template t-name="xweb.notification_bell">
         <t t-set="unread_count" t-default="0"/>
         <t t-set="notifications_url" t-default="''"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
-        <div class="dropdown dropdown-end">
+        <div t-att-name="name or None" t-att-id="id or None" class="dropdown dropdown-end">
             <button type="button"
                     tabindex="0"
                     aria-label="Notifications"
@@ -151,8 +156,10 @@
         <t t-set="mark_all_read_url" t-default="''"/>
         <t t-set="mark_read_url" t-default="''"/>
         <t t-set="inbox_url" t-default="''"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
-        <div id="xweb-notification-panel"
+        <div t-att-id="id or None" id="xweb-notification-panel"
              class="dropdown-content z-40 mt-2 w-80 overflow-hidden rounded-lg border border-base-content/10 bg-base-100 shadow-xl">
 
             <div class="flex min-h-11 items-center justify-between border-b border-base-content/8 px-3">

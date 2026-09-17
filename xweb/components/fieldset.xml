@@ -14,7 +14,9 @@
     <t t-set="legend" t-default="''"/>
     <t t-set="help" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
-    <fieldset t-attf-class="fieldset {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <fieldset t-att-name="name or None" t-att-id="id or None" t-attf-class="fieldset {{extra_class}}">
         <t t-if="legend"><legend class="fieldset-legend"><t t-esc="legend"/></legend></t>
         <t t-out="slot"/>
         <t t-if="help"><p class="fieldset-label"><t t-esc="help"/></p></t>

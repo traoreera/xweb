@@ -21,7 +21,9 @@
     <t t-set="thickness" t-default="''"/>
     <t t-set="color" t-default="'text-primary'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="radial-progress {{color}} {{extra_class}}"
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="radial-progress {{color}} {{extra_class}}"
          t-attf-style="--value:{{value}}; --size:{{size}}; {{ '--thickness:' + thickness + ';' if thickness else '' }}"
          role="progressbar"
          t-attf-aria-valuenow="{{value}}">

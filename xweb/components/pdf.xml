@@ -16,7 +16,9 @@
 <templates>
 
 <template t-name="xweb.pdf_document">
-<html>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+<html t-att-name="name or None" t-att-id="id or None">
 <head>
     <meta charset="utf-8"/>
     <title><t t-esc="page_title"/></title>

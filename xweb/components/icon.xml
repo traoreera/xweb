@@ -178,9 +178,10 @@
 
             'microsoft': 'M0 0v11.408h11.408V0zm12.594 0v11.408H24V0zM0 12.594V24h11.408V12.594zm12.594 0V24H24V12.594z'
         }"/>
+        <t t-set="id" t-default="''"/>
 
         <t t-if="fill_paths.get(name)">
-            <svg viewBox="0 0 24 24"
+            <svg t-att-id="id or None" viewBox="0 0 24 24"
                  fill="currentColor"
                  aria-hidden="true"
                  t-attf-class="shrink-0 {{extra_class}}">
@@ -189,7 +190,7 @@
         </t>
 
         <t t-else="1">
-            <svg viewBox="0 0 24 24"
+            <svg t-att-id="id or None" viewBox="0 0 24 24"
                  fill="none"
                  stroke="currentColor"
                  t-att-stroke-width="stroke_width"

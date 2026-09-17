@@ -27,8 +27,10 @@
 
 <template t-name="xweb.shell">
     <t t-set="topbar_content" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
 
-    <html>
+    <html t-att-id="id or None">
         <head>
             <t t-call="xweb.shell_head"
                t-att-page_title="page_title"/>
@@ -407,8 +409,10 @@
 
 <!-- Un élément de status bar (StatusBarRegistry) — lien si href, texte sinon. -->
 <template t-name="xweb.status_item">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
     <t t-if="item.href">
-        <a t-att-href="item.href"
+        <a t-att-id="id or None" t-att-href="item.href"
            t-att-title="item.title"
            class="flex items-center gap-1 hover:text-base-content">
             <t t-if="item.icon">
@@ -418,7 +422,7 @@
         </a>
     </t>
     <t t-else="1">
-        <span t-att-title="item.title" class="flex items-center gap-1">
+        <span t-att-id="id or None" t-att-title="item.title" class="flex items-center gap-1">
             <t t-if="item.icon">
                 <t t-call="xweb.icon" t-att-name="item.icon" extra_class="size-3.5"/>
             </t>

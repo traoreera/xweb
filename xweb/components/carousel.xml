@@ -24,7 +24,8 @@
          l'opérateur Python bitwise-or, "length" un nom indéfini, et
          l'expression entière retomberait en None silencieusement. -->
     <t t-set="count" t-value="items | length"/>
-    <div t-attf-class="carousel w-full rounded-box {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="carousel w-full rounded-box {{extra_class}}">
         <t t-foreach="items" t-as="item">
             <div t-attf-id="{{id}}-item-{{item_index}}" class="carousel-item relative w-full">
                 <img t-att-src="item['src']" t-attf-alt="{{item.get('alt', '')}}" class="w-full object-cover"/>

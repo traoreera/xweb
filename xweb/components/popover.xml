@@ -6,11 +6,39 @@
     stylées dans assets/app.css — pas une classe Tailwind toggle seule,
     une histoire de spécificité CSS).
 
+    Le déclencheur est un SLOT ("trigger"), pas un tag figé : l'appelant
+    peut y mettre un <button>, un <a href="...">, une icône, etc. Le
+    comportement _hyperscript est porté par un wrapper neutre (<span
+    role="button" tabindex="0">) autour du slot, pas par l'élément
+    slotté lui-même — ça évite de devoir répéter l'attribut `_` dans
+    chaque appelant et ça marche quel que soit le tag réel à l'intérieur.
+
     Piège réel trouvé en l'écrivant : sans `then halt the event` sur le
     déclencheur, le MÊME clic qui ouvre le popover est vu comme "elsewhere"
     par le panneau lui-même (l'event bulle jusqu'au document APRÈS avoir
     ouvert le panneau) et le referme aussitôt — testé, confirmé planter
     sans le halt, corrigé avec. Vérifié dans scripts/verify-hyperscript.mjs.
+    Comme le wrapper porte le handler et pas le slot, ce halt s'applique
+    toujours même si le contenu slotté est un <a href>.
+
+    Le wrapper cible son panneau par relation DOM ("the next
+    .popover-panel"), jamais par id — `id` est un prop optionnel purement
+    cosmétique (hook CSS/JS externe pour l'appelant), sa valeur par défaut
+    ('xweb-popover') est partagée par toute instance qui ne le précise
+    pas. Cibler `#{{id}}-panel` casserait silencieusement dès que deux
+    instances sans id explicite coexistent sur une page : `#id` résout
+    toujours vers le PREMIER élément portant cet id dans le DOM, donc
+    cliquer le 2e déclencheur bascule le panneau du 1er — vérifié en
+    jsdom contre le vrai _hyperscript.min.js vendorisé (deux popovers,
+    clic sur le second, le premier panneau s'ouvre). "the next
+    .popover-panel" n'a besoin d'aucun id, marche pour un nombre
+    quelconque d'instances sans configuration.
+
+    Le wrapper est un <span role="button" tabindex="0"> plutôt qu'un
+    <div> pour rester accessible au clavier même quand le contenu
+    slotté est un élément normalement non focusable (ex: une icône
+    seule) ; si le slot contient déjà un <a> ou un <button> focusable,
+    ce tabindex ajoute juste un arrêt clavier redondant mais inoffensif.
 -->
 <template t-name="xweb.popover">
     <t t-set="id" t-default="'xweb-popover'"/>
@@ -18,11 +46,17 @@
     <t t-set="trigger_class" t-default="'btn btn-sm'"/>
     <t t-set="position" t-default="'bottom'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div class="relative inline-block">
-        <button type="button" t-attf-class="{{trigger_class}}"
-                t-attf-_="on click toggle .popover-open on #{{id}}-panel then halt the event">
-            <t t-esc="trigger_label"/>
-        </button>
+    <t t-set="name" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" class="relative inline-block">
+        <span role="button" tabindex="0"
+              _="on click toggle .popover-open on the next .popover-panel then halt the event
+                 on keyup[key=='Enter' or key==' ']
+                    toggle .popover-open on the next .popover-panel then halt the event">
+            <t t-if="'trigger' in slots" t-out="slots.trigger"/>
+            <button t-else="" type="button" t-attf-class="{{trigger_class}}">
+                <t t-esc="trigger_label"/>
+            </button>
+        </span>
         <div t-attf-id="{{id}}-panel"
              t-attf-class="popover-panel dropdown-content menu bg-base-100 rounded-box z-40 w-64 p-3 shadow-sm border border-base-300 absolute {{ 'top-full mt-2' if position == 'bottom' else 'bottom-full mb-2' }} {{extra_class}}"
              _="on click from elsewhere remove .popover-open from me

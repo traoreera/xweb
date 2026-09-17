@@ -13,7 +13,9 @@
     <t t-set="pin_rows" t-default="False"/>
     <t t-set="extra_class" t-default="''"/>
     <t t-set="custom_body" t-value="(slot or '').strip()"/>
-    <div t-attf-class="overflow-x-auto rounded-box border border-base-300 bg-base-100 {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="overflow-x-auto rounded-box border border-base-300 bg-base-100 {{extra_class}}">
         <table t-attf-class="table table-{{size}} {{ 'table-zebra' if zebra else '' }} {{ 'table-pin-rows' if pin_rows else '' }}">
             <thead>
                 <tr>

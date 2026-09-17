@@ -4,5 +4,7 @@
     <t t-set="max" t-default="100"/>
     <t t-set="color" t-default="'primary'"/>
     <t t-set="extra_class" t-default="'w-full'"/>
-    <progress t-attf-class="progress progress-{{color}} {{extra_class}}" t-att-value="value" t-att-max="max"></progress>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <progress t-att-name="name or None" t-att-id="id or None" t-attf-class="progress progress-{{color}} {{extra_class}}" t-att-value="value" t-att-max="max"></progress>
 </template>

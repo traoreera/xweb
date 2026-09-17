@@ -17,8 +17,10 @@
     <t t-set="variant" t-default="'browser'"/>
     <t t-set="url" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
     <t t-if="variant == 'phone'">
-        <div t-attf-class="mockup-phone {{extra_class}}">
+        <div t-att-name="name or None" t-att-id="id or None" t-attf-class="mockup-phone {{extra_class}}">
             <div class="mockup-phone-camera"></div>
             <div class="mockup-phone-display"><t t-out="slot"/></div>
         </div>
@@ -29,7 +31,7 @@
         </div>
     </t>
     <t t-else="1">
-        <div t-attf-class="mockup-browser border border-base-300 {{extra_class}}">
+        <div t-att-name="name or None" t-att-id="id or None" t-attf-class="mockup-browser border border-base-300 {{extra_class}}">
             <div class="mockup-browser-toolbar">
                 <t t-if="url"><div class="input input-sm"><t t-esc="url"/></div></t>
             </div>

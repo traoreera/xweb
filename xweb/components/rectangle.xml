@@ -1,0 +1,21 @@
+<!--
+    xweb.rectangle — conteneur rectangulaire stylable : un <div> qui accepte
+    une classe supplémentaire et un style inline. La version "dessinable" de
+    xweb.box pour le Studio — le DSL xdsl (login.dsl etc.) y injecte class:
+    et style: en props (t-attf-extra_class / t-att-style), et le rendu
+    applique tout tel quel.
+
+    Props :
+      extra_class : classes CSS supplémentaires (littérales)
+      style       : style inline complet "k:v; k:v; ..." (collé tel quel)
+    slot : le contenu du rectangle
+-->
+<template t-name="xweb.rectangle">
+    <t t-set="extra_class" t-default="''"/>
+    <t t-set="style" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="{{extra_class}}" t-attf-style="{{style}}">
+        <t t-out="slot"/>
+    </div>
+</template>

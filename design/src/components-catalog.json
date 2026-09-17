@@ -1,0 +1,2587 @@
+{
+  "xweb.accordion": {
+    "file": "accordion.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "'xweb-accordion'",
+        "name": "name"
+      },
+      {
+        "default": "'arrow'",
+        "name": "variant"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.alert": {
+    "file": "alert.xml",
+    "props": [
+      {
+        "default": "'info'",
+        "name": "variant"
+      },
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "False",
+        "name": "dismissible"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.avatar": {
+    "file": "avatar.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "initial"
+      },
+      {
+        "default": "''",
+        "name": "src"
+      },
+      {
+        "default": "''",
+        "name": "alt"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "'circle'",
+        "name": "shape"
+      },
+      {
+        "default": "''",
+        "name": "status"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.avatar_group": {
+    "file": "avatar_group.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "'sm'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.badge": {
+    "file": "badge.xml",
+    "props": [
+      {
+        "default": "'neutral'",
+        "name": "color"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "variant"
+      },
+      {
+        "default": "''",
+        "name": "icon_leading"
+      },
+      {
+        "default": "''",
+        "name": "icon_trailing"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.box": {
+    "file": "box.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.breadcrumbs": {
+    "file": "breadcrumbs.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.button": {
+    "file": "button.xml",
+    "props": [
+      {
+        "default": "'primary'",
+        "name": "variant"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "'button'",
+        "name": "type"
+      },
+      {
+        "default": "''",
+        "name": "style"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "None",
+        "name": "_"
+      },
+      {
+        "default": "None",
+        "name": "hx_get"
+      },
+      {
+        "default": "None",
+        "name": "hx_post"
+      },
+      {
+        "default": "None",
+        "name": "hx_put"
+      },
+      {
+        "default": "None",
+        "name": "hx_delete"
+      },
+      {
+        "default": "None",
+        "name": "hx_target"
+      },
+      {
+        "default": "None",
+        "name": "hx_swap"
+      },
+      {
+        "default": "None",
+        "name": "hx_trigger"
+      },
+      {
+        "default": "None",
+        "name": "hx_confirm"
+      },
+      {
+        "default": "None",
+        "name": "hx_vals"
+      },
+      {
+        "default": "None",
+        "name": "hx_headers"
+      },
+      {
+        "default": "None",
+        "name": "hx_indicator"
+      }
+    ]
+  },
+  "xweb.calendar": {
+    "file": "calendar.xml",
+    "props": [
+      {
+        "default": "'xweb-calendar'",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "month_label"
+      },
+      {
+        "default": "[]",
+        "name": "weeks"
+      },
+      {
+        "default": "''",
+        "name": "prev_url"
+      },
+      {
+        "default": "''",
+        "name": "next_url"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.card": {
+    "file": "card.xml",
+    "props": [
+      {
+        "default": "'md'",
+        "name": "padding"
+      },
+      {
+        "default": "'raised'",
+        "name": "variant"
+      },
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "subheading"
+      },
+      {
+        "default": "''",
+        "name": "header"
+      },
+      {
+        "default": "None",
+        "name": "slot_header"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.carousel": {
+    "file": "carousel.xml",
+    "props": [
+      {
+        "default": "'xweb-carousel'",
+        "name": "id"
+      },
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "False",
+        "name": "show_nav"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.chat_bubble": {
+    "file": "chat_bubble.xml",
+    "props": [
+      {
+        "default": "'start'",
+        "name": "side"
+      },
+      {
+        "default": "''",
+        "name": "message"
+      },
+      {
+        "default": "''",
+        "name": "author"
+      },
+      {
+        "default": "''",
+        "name": "time"
+      },
+      {
+        "default": "''",
+        "name": "avatar_initial"
+      },
+      {
+        "default": "''",
+        "name": "color"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.checkbox": {
+    "file": "checkbox.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "''",
+        "name": "description"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "False",
+        "name": "checked"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.collapse": {
+    "file": "collapse.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "'arrow'",
+        "name": "variant"
+      },
+      {
+        "default": "False",
+        "name": "open"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.combobox": {
+    "file": "combobox.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "'xweb-combobox'",
+        "name": "id"
+      },
+      {
+        "default": "[]",
+        "name": "options"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "'Rechercher…'",
+        "name": "placeholder"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.container": {
+    "file": "container.xml",
+    "props": [
+      {
+        "default": "'7xl'",
+        "name": "max_width"
+      },
+      {
+        "default": "True",
+        "name": "padded"
+      },
+      {
+        "default": "True",
+        "name": "center"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.countdown": {
+    "file": "countdown.xml",
+    "props": [
+      {
+        "default": "0",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "'text-5xl'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.csrf": {
+    "file": "form.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "token"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.datepicker": {
+    "file": "datepicker.xml",
+    "props": [
+      {
+        "default": "'xweb-datepicker'",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "value_label"
+      },
+      {
+        "default": "''",
+        "name": "month_label"
+      },
+      {
+        "default": "[]",
+        "name": "weeks"
+      },
+      {
+        "default": "'Choisir une date…'",
+        "name": "placeholder"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.description": {
+    "file": "description.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.divider": {
+    "file": "divider.xml",
+    "props": [
+      {
+        "default": "False",
+        "name": "vertical"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.drawer": {
+    "file": "drawer.xml",
+    "props": [
+      {
+        "default": "'xweb-drawer'",
+        "name": "id"
+      },
+      {
+        "default": "[]",
+        "name": "side_items"
+      },
+      {
+        "default": "False",
+        "name": "side_end"
+      },
+      {
+        "default": "'w-72'",
+        "name": "width"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.drawer_toggle": {
+    "file": "drawer.xml",
+    "props": [
+      {
+        "default": "'xweb-drawer'",
+        "name": "target"
+      },
+      {
+        "default": "'btn btn-square btn-ghost'",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.dropdown": {
+    "file": "dropdown.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "''",
+        "name": "trigger"
+      },
+      {
+        "default": "'start'",
+        "name": "align"
+      },
+      {
+        "default": "'bottom'",
+        "name": "position"
+      },
+      {
+        "default": "False",
+        "name": "hover"
+      },
+      {
+        "default": "'btn btn-sm'",
+        "name": "button_class"
+      },
+      {
+        "default": "'w-52'",
+        "name": "width"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.editable_table": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "'xweb-editable-table'",
+        "name": "id"
+      },
+      {
+        "default": "[]",
+        "name": "columns"
+      },
+      {
+        "default": "[]",
+        "name": "rows"
+      },
+      {
+        "default": "''",
+        "name": "save_url"
+      },
+      {
+        "default": "''",
+        "name": "add_row_url"
+      },
+      {
+        "default": "''",
+        "name": "delete_row_url"
+      },
+      {
+        "default": "''",
+        "name": "reorder_url"
+      },
+      {
+        "default": "''",
+        "name": "add_column_url"
+      },
+      {
+        "default": "''",
+        "name": "rename_column_url"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.editable_table_cell_checkbox": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "row"
+      },
+      {
+        "default": "{}",
+        "name": "col"
+      },
+      {
+        "default": "''",
+        "name": "save_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.editable_table_cell_select": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "row"
+      },
+      {
+        "default": "{}",
+        "name": "col"
+      },
+      {
+        "default": "''",
+        "name": "save_url"
+      }
+    ]
+  },
+  "xweb.editable_table_cell_text": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "row"
+      },
+      {
+        "default": "{}",
+        "name": "col"
+      },
+      {
+        "default": "''",
+        "name": "save_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.editable_table_header_cell": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "col"
+      },
+      {
+        "default": "''",
+        "name": "rename_column_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.editable_table_row": {
+    "file": "editable_table.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "row"
+      },
+      {
+        "default": "[]",
+        "name": "columns"
+      },
+      {
+        "default": "''",
+        "name": "save_url"
+      },
+      {
+        "default": "''",
+        "name": "delete_row_url"
+      },
+      {
+        "default": "''",
+        "name": "reorder_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.email_button": {
+    "file": "email.xml",
+    "props": [
+      {
+        "default": "'#'",
+        "name": "href"
+      },
+      {
+        "default": "'#111827'",
+        "name": "color"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.email_layout": {
+    "file": "email.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.empty": {
+    "file": "empty.xml",
+    "props": [
+      {
+        "default": "'inbox'",
+        "name": "icon"
+      },
+      {
+        "default": "'Rien à afficher'",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "message"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.error": {
+    "file": "error.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.error_page": {
+    "file": "error_page.xml",
+    "props": [
+      {
+        "default": "'403'",
+        "name": "code"
+      },
+      {
+        "default": "'Accès refusé'",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "message"
+      },
+      {
+        "default": "'/'",
+        "name": "home_path"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.field": {
+    "file": "field.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "''",
+        "name": "for_"
+      },
+      {
+        "default": "''",
+        "name": "error"
+      },
+      {
+        "default": "''",
+        "name": "help"
+      },
+      {
+        "default": "False",
+        "name": "required"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.fieldset": {
+    "file": "fieldset.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "legend"
+      },
+      {
+        "default": "''",
+        "name": "help"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.file_input": {
+    "file": "file_input.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "accept"
+      },
+      {
+        "default": "False",
+        "name": "multiple"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "False",
+        "name": "required"
+      },
+      {
+        "default": "False",
+        "name": "invalid"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.form": {
+    "file": "form.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "action"
+      },
+      {
+        "default": "'post'",
+        "name": "method"
+      },
+      {
+        "default": "''",
+        "name": "token"
+      },
+      {
+        "default": "True",
+        "name": "boost"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "False",
+        "name": "multipart"
+      },
+      {
+        "default": "'flex flex-col gap-4'",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "style"
+      }
+    ]
+  },
+  "xweb.grid": {
+    "file": "grid.xml",
+    "props": [
+      {
+        "default": "2",
+        "name": "cols"
+      },
+      {
+        "default": "'md'",
+        "name": "gap"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.icon": {
+    "file": "icon.xml",
+    "props": [
+      {
+        "default": "'question'",
+        "name": "name"
+      },
+      {
+        "default": "'size-5'",
+        "name": "extra_class"
+      },
+      {
+        "default": "'1.5'",
+        "name": "stroke_width"
+      }
+    ]
+  },
+  "xweb.indicator": {
+    "file": "indicator.xml",
+    "props": [
+      {
+        "default": "'top'",
+        "name": "v"
+      },
+      {
+        "default": "'end'",
+        "name": "h"
+      },
+      {
+        "default": "None",
+        "name": "slot_badge"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.input": {
+    "file": "input.xml",
+    "props": [
+      {
+        "default": "'text'",
+        "name": "type"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "placeholder"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "False",
+        "name": "readonly"
+      },
+      {
+        "default": "False",
+        "name": "required"
+      },
+      {
+        "default": "False",
+        "name": "autofocus"
+      },
+      {
+        "default": "False",
+        "name": "invalid"
+      },
+      {
+        "default": "''",
+        "name": "autocomplete"
+      },
+      {
+        "default": "None",
+        "name": "minlength"
+      },
+      {
+        "default": "None",
+        "name": "maxlength"
+      },
+      {
+        "default": "''",
+        "name": "left_addon"
+      },
+      {
+        "default": "''",
+        "name": "right_addon"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "style"
+      }
+    ]
+  },
+  "xweb.join": {
+    "file": "join.xml",
+    "props": [
+      {
+        "default": "False",
+        "name": "vertical"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.kanban": {
+    "file": "kanban.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "columns"
+      },
+      {
+        "default": "''",
+        "name": "move_url"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "add_card_url"
+      },
+      {
+        "default": "''",
+        "name": "delete_card_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.kanban_card": {
+    "file": "kanban.xml",
+    "props": [
+      {
+        "default": "{}",
+        "name": "card"
+      },
+      {
+        "default": "''",
+        "name": "move_url"
+      },
+      {
+        "default": "''",
+        "name": "delete_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.kbd": {
+    "file": "kbd.xml",
+    "props": [
+      {
+        "default": "'sm'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.label": {
+    "file": "label.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "for_"
+      },
+      {
+        "default": "''",
+        "name": "badge"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.list": {
+    "file": "list.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.locale_switcher": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "'fr'",
+        "name": "locale"
+      },
+      {
+        "default": "['fr']",
+        "name": "locales"
+      },
+      {
+        "default": "{}",
+        "name": "labels"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.marketing_layout": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "topbar_content"
+      },
+      {
+        "default": "None",
+        "name": "demo_path"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.menu": {
+    "file": "menu.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "current_path"
+      },
+      {
+        "default": "False",
+        "name": "horizontal"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "'bg-base-100 rounded-box w-56'",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.mockup": {
+    "file": "mockup.xml",
+    "props": [
+      {
+        "default": "'browser'",
+        "name": "variant"
+      },
+      {
+        "default": "''",
+        "name": "url"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.modal": {
+    "file": "modal.xml",
+    "props": [
+      {
+        "default": "'xweb-modal'",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "actions"
+      },
+      {
+        "default": "'Fermer'",
+        "name": "close_label"
+      },
+      {
+        "default": "''",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.modal_trigger": {
+    "file": "modal.xml",
+    "props": [
+      {
+        "default": "'xweb-modal'",
+        "name": "target"
+      },
+      {
+        "default": "'btn'",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.nav_items": {
+    "file": "shell.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "current_path"
+      }
+    ]
+  },
+  "xweb.notification_bell": {
+    "file": "notifications.xml",
+    "props": [
+      {
+        "default": "0",
+        "name": "unread_count"
+      },
+      {
+        "default": "''",
+        "name": "notifications_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.notification_panel": {
+    "file": "notifications.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "notifications"
+      },
+      {
+        "default": "0",
+        "name": "unread_count"
+      },
+      {
+        "default": "''",
+        "name": "mark_all_read_url"
+      },
+      {
+        "default": "''",
+        "name": "mark_read_url"
+      },
+      {
+        "default": "''",
+        "name": "inbox_url"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.notification_toast": {
+    "file": "notifications.xml",
+    "props": [
+      {
+        "default": "'xweb-toast'",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "message"
+      },
+      {
+        "default": "'info'",
+        "name": "level"
+      },
+      {
+        "default": "'5s'",
+        "name": "dismiss_after"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.password": {
+    "file": "password.xml",
+    "props": [
+      {
+        "default": "'password'",
+        "name": "name"
+      },
+      {
+        "default": "name",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "placeholder"
+      },
+      {
+        "default": "'current-password'",
+        "name": "autocomplete"
+      },
+      {
+        "default": "True",
+        "name": "required"
+      },
+      {
+        "default": "None",
+        "name": "minlength"
+      },
+      {
+        "default": "False",
+        "name": "invalid"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.pdf_document": {
+    "file": "pdf.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.popover": {
+    "file": "popover.xml",
+    "props": [
+      {
+        "default": "'xweb-popover'",
+        "name": "id"
+      },
+      {
+        "default": "'Options'",
+        "name": "trigger_label"
+      },
+      {
+        "default": "'btn btn-sm'",
+        "name": "trigger_class"
+      },
+      {
+        "default": "'bottom'",
+        "name": "position"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.popup": {
+    "file": "popup.xml",
+    "props": [
+      {
+        "default": "'xweb-popup'",
+        "name": "id"
+      },
+      {
+        "default": "'w-56'",
+        "name": "width"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.progress": {
+    "file": "progress.xml",
+    "props": [
+      {
+        "default": "None",
+        "name": "value"
+      },
+      {
+        "default": "100",
+        "name": "max"
+      },
+      {
+        "default": "'primary'",
+        "name": "color"
+      },
+      {
+        "default": "'w-full'",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.radial_progress": {
+    "file": "radial_progress.xml",
+    "props": [
+      {
+        "default": "0",
+        "name": "value"
+      },
+      {
+        "default": "'5rem'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "thickness"
+      },
+      {
+        "default": "'text-primary'",
+        "name": "color"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.radio": {
+    "file": "radio.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "''",
+        "name": "description"
+      },
+      {
+        "default": "False",
+        "name": "checked"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "'primary'",
+        "name": "color"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.range": {
+    "file": "range.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "0",
+        "name": "min"
+      },
+      {
+        "default": "100",
+        "name": "max"
+      },
+      {
+        "default": "1",
+        "name": "step"
+      },
+      {
+        "default": "None",
+        "name": "value"
+      },
+      {
+        "default": "'primary'",
+        "name": "color"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.rating": {
+    "file": "rating.xml",
+    "props": [
+      {
+        "default": "'xweb-rating'",
+        "name": "name"
+      },
+      {
+        "default": "0",
+        "name": "value"
+      },
+      {
+        "default": "5",
+        "name": "max"
+      },
+      {
+        "default": "False",
+        "name": "readonly"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "'bg-warning'",
+        "name": "color"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.rectangle": {
+    "file": "rectangle.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "style"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.select": {
+    "file": "select.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "[]",
+        "name": "options"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "placeholder"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "False",
+        "name": "required"
+      },
+      {
+        "default": "False",
+        "name": "invalid"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.shell": {
+    "file": "shell.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "topbar_content"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.shell_head": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.shell_minimal": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "topbar_content"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.sidebar_toggle": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.skeleton": {
+    "file": "skeleton.xml",
+    "props": [
+      {
+        "default": "'w-full'",
+        "name": "width"
+      },
+      {
+        "default": "'h-4'",
+        "name": "height"
+      },
+      {
+        "default": "False",
+        "name": "circle"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.spinner": {
+    "file": "spinner.xml",
+    "props": [
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "'accent'",
+        "name": "color"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.stack": {
+    "file": "stack.xml",
+    "props": [
+      {
+        "default": "'col'",
+        "name": "direction"
+      },
+      {
+        "default": "'md'",
+        "name": "gap"
+      },
+      {
+        "default": "False",
+        "name": "wrap"
+      },
+      {
+        "default": "'stretch'",
+        "name": "align"
+      },
+      {
+        "default": "'start'",
+        "name": "justify"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.stat": {
+    "file": "stat.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "title"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "desc"
+      },
+      {
+        "default": "''",
+        "name": "icon"
+      },
+      {
+        "default": "'primary'",
+        "name": "color"
+      },
+      {
+        "default": "True",
+        "name": "bordered"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.status_item": {
+    "file": "shell.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.steps": {
+    "file": "steps.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "-1",
+        "name": "current"
+      },
+      {
+        "default": "False",
+        "name": "vertical"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.swap": {
+    "file": "swap.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "False",
+        "name": "checked"
+      },
+      {
+        "default": "True",
+        "name": "flip"
+      },
+      {
+        "default": "None",
+        "name": "slot_on"
+      },
+      {
+        "default": "None",
+        "name": "slot_off"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.table": {
+    "file": "table.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "columns"
+      },
+      {
+        "default": "[]",
+        "name": "rows"
+      },
+      {
+        "default": "'Aucun élément.'",
+        "name": "empty"
+      },
+      {
+        "default": "False",
+        "name": "zebra"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "pin_rows"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.tabs": {
+    "file": "tabs.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "'border'",
+        "name": "variant"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "current_path"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.textarea": {
+    "file": "textarea.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "placeholder"
+      },
+      {
+        "default": "4",
+        "name": "rows"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "False",
+        "name": "readonly"
+      },
+      {
+        "default": "False",
+        "name": "required"
+      },
+      {
+        "default": "False",
+        "name": "invalid"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.theme_toggle": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "'theme-btn'",
+        "name": "id"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      }
+    ]
+  },
+  "xweb.timeline": {
+    "file": "timeline.xml",
+    "props": [
+      {
+        "default": "[]",
+        "name": "items"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.toast": {
+    "file": "toast.xml",
+    "props": [
+      {
+        "default": "'info'",
+        "name": "variant"
+      },
+      {
+        "default": "5",
+        "name": "timeout"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      }
+    ]
+  },
+  "xweb.toast_region": {
+    "file": "notifications.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.toasts_oob": {
+    "file": "toast.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.toggle": {
+    "file": "toggle.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "'on'",
+        "name": "value"
+      },
+      {
+        "default": "''",
+        "name": "label"
+      },
+      {
+        "default": "''",
+        "name": "description"
+      },
+      {
+        "default": "False",
+        "name": "checked"
+      },
+      {
+        "default": "False",
+        "name": "disabled"
+      },
+      {
+        "default": "'primary'",
+        "name": "color"
+      },
+      {
+        "default": "'md'",
+        "name": "size"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.toggle_demo": {
+    "file": "toggle_demo.xml",
+    "props": [
+      {
+        "default": "'/plugins'",
+        "name": "plugin_prefix"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.tooltip": {
+    "file": "tooltip.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "text"
+      },
+      {
+        "default": "'top'",
+        "name": "position"
+      },
+      {
+        "default": "''",
+        "name": "extra_class"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  },
+  "xweb.topbar_slot": {
+    "file": "layout.xml",
+    "props": [
+      {
+        "default": "''",
+        "name": "content"
+      },
+      {
+        "default": "''",
+        "name": "name"
+      },
+      {
+        "default": "''",
+        "name": "id"
+      }
+    ]
+  }
+}

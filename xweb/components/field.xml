@@ -6,7 +6,9 @@
     <t t-set="help" t-default="''"/>
     <t t-set="required" t-default="False"/>
     <t t-set="extra_class" t-default="''"/>
-    <fieldset t-attf-class="fieldset p-0 {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <fieldset t-att-name="name or None" t-att-id="id or None" t-attf-class="fieldset p-0 {{extra_class}}">
         <t t-if="label">
             <label t-att-for="for_ or None" class="fieldset-legend text-sm">
                 <t t-esc="label"/>

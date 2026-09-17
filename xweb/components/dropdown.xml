@@ -8,7 +8,9 @@
     <t t-set="button_class" t-default="'btn btn-sm'"/>
     <t t-set="width" t-default="'w-52'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="dropdown dropdown-{{position}} dropdown-{{align}} {{ 'dropdown-hover' if hover else '' }} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="dropdown dropdown-{{position}} dropdown-{{align}} {{ 'dropdown-hover' if hover else '' }} {{extra_class}}">
         <div tabindex="0" role="button" t-attf-class="{{ '' if trigger else button_class + ' gap-1' }}">
             <t t-if="trigger"><t t-out="trigger"/></t>
             <t t-else="1">

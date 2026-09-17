@@ -10,7 +10,9 @@
     <t t-set="timeout" t-default="5"/>
     <t t-set="extra_class" t-default="''"/>
     <t t-set="icon_name" t-value="{'info': 'info', 'success': 'check_circle', 'warning': 'warning', 'error': 'error'}.get(variant, 'info')"/>
-    <div role="status" t-attf-class="alert alert-{{variant}} shadow-lg {{extra_class}}"
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-id="id or None" role="status" t-attf-class="alert alert-{{variant}} shadow-lg {{extra_class}}"
          t-att-_="('init wait %ss then remove me' % timeout) if timeout else None">
         <t t-call="xweb.icon" t-att-name="icon_name" extra_class="size-5"/>
         <span><t t-out="slot"/></span>
@@ -19,6 +21,8 @@
 </template>
 
 <template t-name="xweb.toasts_oob">
-    <div id="xweb-toasts" hx-swap-oob="beforeend" class="toast toast-end toast-bottom z-50"><t t-out="slot"/></div>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" id="xweb-toasts" hx-swap-oob="beforeend" class="toast toast-end toast-bottom z-50"><t t-out="slot"/></div>
 </template>
 </templates>

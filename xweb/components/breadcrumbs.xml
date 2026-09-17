@@ -1,7 +1,9 @@
 <template t-name="xweb.breadcrumbs">
     <t t-set="items" t-default="[]"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="breadcrumbs text-sm {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-id="id or None" t-attf-class="breadcrumbs text-sm {{extra_class}}">
         <ul>
             <t t-foreach="items" t-as="crumb">
                 <li>

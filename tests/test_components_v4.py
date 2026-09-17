@@ -245,7 +245,6 @@ def test_popup_renders_zone_and_panel_with_matching_ids(registry):
     )
     assert "<span>Zone</span>" in html
     assert 'id="ctx-1-panel"' in html
-    assert "ctx-1-panel" in html  # référencé par le _hyperscript de la zone
 
 
 def test_popup_panel_uses_fixed_position_not_absolute(registry):
@@ -276,6 +275,29 @@ def test_popup_width_is_a_literal_class_not_interpolated_value(registry):
 def test_popup_default_id_lets_a_single_instance_work_unconfigured(registry):
     html = registry.render("xweb.popup", {"slot": Markup("x"), "slot_menu": Markup("y")})
     assert "xweb-popup-panel" in html
+
+
+def test_popup_zone_targets_its_panel_by_dom_relation_not_by_id(registry):
+    """Régression : la zone ciblait `#{{id}}-panel` — deux xweb.popup SANS
+    id explicite (donc partageant le même id par défaut, 'xweb-popup')
+    faisaient collision, `#id` résolvant toujours vers le PREMIER élément
+    portant cet id : un clic droit sur la 2e zone bougeait le panneau de
+    la 1re (même piège, même correction que xweb.popover — vérifié en
+    jsdom contre le vrai _hyperscript.min.js vendorisé). "the next
+    .popover-panel" rend la zone indépendante de `id`, donc son `_` est
+    désormais identique qu'un id soit passé ou non."""
+    html_with_id = registry.render(
+        "xweb.popup", {"id": "ctx-1", "slot": Markup("x"), "slot_menu": Markup("y")}
+    )
+    html_without_id = registry.render("xweb.popup", {"slot": Markup("x"), "slot_menu": Markup("y")})
+    assert "the next .popover-panel" in html_with_id
+    assert "#ctx-1-panel" not in html_with_id
+    assert "#xweb-popup-panel" not in html_without_id
+
+    def zone_script(html: str) -> str:
+        return html.split('_="', 1)[1].split('"', 1)[0]
+
+    assert zone_script(html_with_id) == zone_script(html_without_id)
 
 
 def test_popup_menu_slot_is_never_escaped(registry):

@@ -23,7 +23,9 @@
     <t t-set="avatar_initial" t-default="''"/>
     <t t-set="color" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="chat chat-{{side}} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="chat chat-{{side}} {{extra_class}}">
         <t t-if="avatar_initial">
             <div class="chat-image">
                 <t t-call="xweb.avatar" t-att-initial="avatar_initial" size="sm"/>

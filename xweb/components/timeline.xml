@@ -15,7 +15,9 @@
 <template t-name="xweb.timeline">
     <t t-set="items" t-default="[]"/>
     <t t-set="extra_class" t-default="''"/>
-    <ul t-attf-class="timeline timeline-vertical timeline-compact {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <ul t-att-id="id or None" t-attf-class="timeline timeline-vertical timeline-compact {{extra_class}}">
         <t t-foreach="items" t-as="item">
             <li>
                 <t t-if="not item_first"><hr/></t>

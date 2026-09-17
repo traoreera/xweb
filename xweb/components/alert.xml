@@ -3,7 +3,9 @@
     <t t-set="title" t-default="''"/>
     <t t-set="dismissible" t-default="False"/>
     <t t-set="extra_class" t-default="''"/>
-    <div role="alert" t-attf-class="alert alert-{{variant}} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" role="alert" t-attf-class="alert alert-{{variant}} {{extra_class}}">
         <div class="flex-1 min-w-0">
             <t t-if="title"><div class="font-semibold"><t t-esc="title"/></div></t>
             <div t-attf-class="text-sm {{ 'mt-1' if title else '' }}"><t t-out="slot"/></div>

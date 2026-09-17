@@ -35,6 +35,19 @@
  * l'autre moitié de la paire lecture/écriture, un vrai bug silencieux au
  * chargement suivant. Cette classe est pour du code NEUF, pas une
  * migration automatique de l'existant.
+ *
+ * Clé de stockage réelle : `encodeURIComponent(namespace):encodeURIComponent(key)`
+ * — jamais une simple concaténation. Bug réel trouvé en la construisant :
+ * `namespace:key` brut fait collisionner deux paires (namespace, clé)
+ * DIFFÉRENTES sur la MÊME entrée localStorage dès que l'une des deux
+ * contient elle-même ':' — `("a", "b:c")` et `("a:b", "c")` donnaient
+ * toutes les deux `"a:b:c"`. `encodeURIComponent` échappe ':' (device
+ * `%3A`), donc les deux ne peuvent plus jamais se rencontrer. Rétro-
+ * incompatible avec des clés déjà posées par une version antérieure de ce
+ * fichier SI namespace/clé contenaient ':' — improbable en pratique (rien
+ * de ce dépôt n'utilise ':' dans un nom de namespace/clé), et de toute
+ * façon rien de plus grave qu'une préférence perdue une fois (voir
+ * l'avertissement "jamais un secret" ci-dessus).
  */
 class XwebStorage {
   constructor(namespace = "xweb") {
@@ -42,7 +55,7 @@ class XwebStorage {
   }
 
   _key(key) {
-    return `${this.namespace}:${key}`;
+    return `${encodeURIComponent(this.namespace)}:${encodeURIComponent(key)}`;
   }
 
   get(key, fallback = null) {
@@ -84,6 +97,39 @@ class XwebStorage {
     } catch (_e) {
       return false;
     }
+  }
+
+  /** Clés de CE namespace, sans le préfixe — jamais les clés d'un autre
+   * namespace/plugin (localStorage est un espace global unique par
+   * origine, `keys()` doit rester scopé comme le reste de cette classe). */
+  keys() {
+    const prefix = `${encodeURIComponent(this.namespace)}:`;
+    const result = [];
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const raw = window.localStorage.key(i);
+        if (raw !== null && raw.startsWith(prefix)) {
+          result.push(decodeURIComponent(raw.slice(prefix.length)));
+        }
+      }
+    } catch (_e) {
+      return [];
+    }
+    return result;
+  }
+
+  /** Efface TOUTES les clés de ce namespace — jamais tout localStorage (ça
+   * effacerait aussi les autres plugins/le thème). Collecte d'abord la
+   * liste complète via keys() PUIS supprime — égrener removeItem() pendant
+   * qu'on itère localStorage.key(i) directement décale les index au fur
+   * et à mesure et saute des entrées, piège classique de ce genre de
+   * boucle. */
+  clear() {
+    let ok = true;
+    for (const key of this.keys()) {
+      if (!this.remove(key)) ok = false;
+    }
+    return ok;
   }
 }
 

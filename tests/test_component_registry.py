@@ -117,3 +117,78 @@ def test_no_template_file_is_silently_unparseable(registry):
         registry.register_file(path, source_plugin="xweb-core")
     # Si on arrive ici sans exception, tous les fichiers étaient valides.
     assert len(registry) > 0
+
+
+# Exceptions documentées à l'uniformisation id/name (scripts/uniform-id-name.py) :
+# des helpers de FRAGMENT qui n'émettent aucune racine propre — nav_items est
+# une boucle récursive de <li> (t-foreach en tête), il n'y a aucun élément
+# racine sur lequel poser id/name sans le dupliquer à chaque itération.
+_ID_NAME_EXCEPTIONS = {"xweb.nav_items"}
+
+
+def test_every_catalogue_component_exposes_id_and_name(registry):
+    """Contrat imposé par le no-code (xdsl) : CHAQUE composant du catalogue
+    offre une prop id et une prop name (t-set) et projette t-att-id="id or
+    None" sur l'élément racine de CHAQUE branche (button rend <a> OU <button>
+    selon `href` — une seule des deux serait une prop inerte à moitié). Sans
+    lui, tout composant ajouté sans id/name régresserait en silence."""
+    for path in COMPONENTS_DIR.glob("*.xml"):
+        root = etree.fromstring(path.read_bytes())
+        templates = root.findall(".//template") if root.tag == "templates" else [root]
+        for t in templates:
+            name = t.get("t-name")
+            if not name or name in _ID_NAME_EXCEPTIONS:
+                continue
+            body = etree.tostring(t).decode()
+            assert 't-set="id"' in body, f"{name}: prop id manquante"
+            assert 't-set="name"' in body, f"{name}: prop name manquante"
+            roots: list = []
+            for child in t:
+                if child.tag == "t":
+                    if child.get("t-if") is not None or child.get("t-else") is not None:
+                        for c in child:
+                            if isinstance(c.tag, str) and c.tag != "t":
+                                roots.append(c)
+                                break
+                    continue
+                if isinstance(child.tag, str):
+                    roots.append(child)
+            assert roots, f"{name}: aucun élément racine détecté"
+            missing = [
+                r.tag
+                for r in roots
+                if "t-att-id" not in etree.tostring(r, encoding="unicode")
+            ]
+            assert not missing, f"{name}: t-att-id absent sur la/les branche(s) {missing}"
+
+
+def test_register_dir_registers_dsl_files(registry, tmp_path):
+    """register_dir() doit prendre les .dsl comme les .xml — c'est la
+    promesse du design doc (docs/dsl-design.md#architecture) : un auteur de
+    plugin pose un .dsl là où un .xml se trouvait, rien d'autre ne change."""
+    (tmp_path / "auth.dsl").write_text(
+        'component auth.login { div { text: "Entrez vos identifiants" } }\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "page.xml").write_text(
+        '<templates><template t-name="page.home"><main t-call="auth.login"/></template></templates>',
+        encoding="utf-8",
+    )
+    names = registry.register_dir(tmp_path, source_plugin="test")
+    assert "auth.login" in names
+    assert "page.home" in names
+    html = registry.render("page.home", {})
+    assert "Entrez vos identifiants" in html
+
+
+def test_register_source_intercepts_dsl_by_content(registry):
+    """register_source() avec un source .dsl (ou .=filename) détecte le DSL
+    par le contenu (pas de '<' en tête) et transcrit avant le parse — le
+    usage "source en mémoire" d'un éditeur No-Code."""
+    names = registry.register_source(
+        'component auth.login { button { label: "Connexion" } }\n',
+        source_plugin="test",
+    )
+    assert "auth.login" in names
+    html = registry.render("auth.login", {})
+    assert "Connexion" in html

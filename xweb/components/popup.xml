@@ -18,8 +18,9 @@
                   de confiance, docs/language.md#t-call).
 
     Props :
-      id          : identifiant DOM unique — requis si plusieurs instances
-                    sur une page (même contrat que xweb.modal/drawer/popover)
+      id          : identifiant DOM optionnel, purement cosmétique (hook
+                    CSS/JS externe) — jamais utilisé en interne, voir
+                    "the next .popover-panel" ci-dessous
       width       : classe Tailwind littérale, largeur du panneau
       extra_class : classes supplémentaires sur le conteneur de la zone
 
@@ -27,19 +28,30 @@
     jamais de fermeture automatique au clic sur un item du menu (délibéré,
     même choix que xweb.popover : l'action de l'item décide elle-même de
     ce qui se passe ensuite, ce composant ne présume rien).
+
+    La zone et le panneau se référencent par relation DOM ("the next
+    .popover-panel"), jamais par id — id est un prop cosmétique (hook
+    externe), sa valeur par défaut ('xweb-popup') est partagée par toute
+    instance qui ne le précise pas. Cibler `#{{id}}-panel` casserait
+    silencieusement dès que deux instances sans id explicite coexistent :
+    `#id` résout toujours vers le PREMIER élément portant cet id dans le
+    DOM, donc le clic droit sur la 2e zone ouvrirait le panneau de la
+    1re — même piège que xweb.popover (voir ce fichier), corrigé de la
+    même façon, vérifié en jsdom contre le vrai _hyperscript.min.js.
 -->
 <template t-name="xweb.popup">
     <t t-set="id" t-default="'xweb-popup'"/>
     <t t-set="width" t-default="'w-56'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="{{extra_class}}"
-         t-attf-_="on contextmenu halt the event
-                    then set #{{id}}-panel's style.left to (event.clientX + 'px')
-                    then set #{{id}}-panel's style.top to (event.clientY + 'px')
-                    then add .popover-open to #{{id}}-panel">
+    <t t-set="name" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="{{extra_class}}"
+         _="on contextmenu halt the event
+             then set (the next .popover-panel)'s style.left to (event.clientX + 'px')
+             then set (the next .popover-panel)'s style.top to (event.clientY + 'px')
+             then add .popover-open to the next .popover-panel">
         <t t-out="slot"/>
     </div>
-    <ul t-att-id="id + '-panel'"
+    <ul t-att-name="name or None" t-att-id="id + '-panel'"
         t-attf-class="popover-panel fixed menu bg-base-100 rounded-box z-40 {{width}} p-2 shadow-sm border border-base-300"
         _="on click from elsewhere remove .popover-open from me
            on keyup[key=='Escape'] from the document remove .popover-open from me">

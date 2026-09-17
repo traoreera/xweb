@@ -4,7 +4,9 @@
     <t t-set="size" t-default="'md'"/>
     <t t-set="current_path" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
-    <div role="tablist" t-attf-class="tabs tabs-{{variant}} tabs-{{size}} {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-id="id or None" role="tablist" t-attf-class="tabs tabs-{{variant}} tabs-{{size}} {{extra_class}}">
         <t t-foreach="items" t-as="tab">
             <a role="tab" t-att-href="tab.get('href')"
                t-attf-class="tab gap-2 {{ 'tab-active' if tab.get('active') or (current_path and tab.get('href') == current_path) else '' }}">

@@ -9,14 +9,48 @@
     <t t-set="variant" t-default="'primary'"/>
     <t t-set="size" t-default="'md'"/>
     <t t-set="type" t-default="'button'"/>
+    <t t-set="style" t-default="''"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <!-- Passthrough scripting (_hyperscript/htmx) de l'appelant — le DSL
+         pose hx-*/_ en attribut statique du t-call, l'engine les passe en
+         props sous forme snake_case (hx-get -> hx_get). Sans projection
+         ici, un bouton "scripté" rendait un bouton inerte sans erreur. -->
+    <t t-set="_" t-default="None"/>
+    <t t-set="hx_get" t-default="None"/>
+    <t t-set="hx_post" t-default="None"/>
+    <t t-set="hx_put" t-default="None"/>
+    <t t-set="hx_delete" t-default="None"/>
+    <t t-set="hx_target" t-default="None"/>
+    <t t-set="hx_swap" t-default="None"/>
+    <t t-set="hx_trigger" t-default="None"/>
+    <t t-set="hx_confirm" t-default="None"/>
+    <t t-set="hx_vals" t-default="None"/>
+    <t t-set="hx_headers" t-default="None"/>
+    <t t-set="hx_indicator" t-default="None"/>
+    <t t-set="hyperscript" t-value="_ if _.__class__.__name__ == 'str' else None"/>
     <t t-if="href">
-        <a t-att-href="href" t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}">
+        <a t-att-name="name or None" t-att-id="id or None" t-att-href="href" t-att-style="style or None"
+           t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}"
+           t-att-_="hyperscript" t-att-hx-get="hx_get or None" t-att-hx-post="hx_post or None"
+           t-att-hx-put="hx_put or None" t-att-hx-delete="hx_delete or None"
+           t-att-hx-target="hx_target or None" t-att-hx-swap="hx_swap or None"
+           t-att-hx-trigger="hx_trigger or None" t-att-hx-confirm="hx_confirm or None"
+           t-att-hx-vals="hx_vals or None" t-att-hx-headers="hx_headers or None"
+           t-att-hx-indicator="hx_indicator or None">
             <t t-out="slot"/>
         </a>
     </t>
     <t t-else="1">
-        <button t-att-type="type" t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}"
-                t-att-disabled="disabled">
+        <button t-att-name="name or None" t-att-id="id or None" t-att-type="type" t-att-style="style or None"
+                t-attf-class="btn btn-{{variant}} btn-{{size}} {{extra_class}}"
+                t-att-disabled="disabled"
+                t-att-_="hyperscript" t-att-hx-get="hx_get or None" t-att-hx-post="hx_post or None"
+                t-att-hx-put="hx_put or None" t-att-hx-delete="hx_delete or None"
+                t-att-hx-target="hx_target or None" t-att-hx-swap="hx_swap or None"
+                t-att-hx-trigger="hx_trigger or None" t-att-hx-confirm="hx_confirm or None"
+                t-att-hx-vals="hx_vals or None" t-att-hx-headers="hx_headers or None"
+                t-att-hx-indicator="hx_indicator or None">
             <t t-out="slot"/>
         </button>
     </t>

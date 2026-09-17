@@ -12,7 +12,8 @@
     <t t-set="close_label" t-default="'Fermer'"/>
     <t t-set="size" t-default="''"/>
     <t t-set="extra_class" t-default="''"/>
-    <dialog t-att-id="id" t-attf-class="modal {{extra_class}}">
+    <t t-set="name" t-default="''"/>
+    <dialog t-att-name="name or None" t-att-id="id" t-attf-class="modal {{extra_class}}">
         <!-- shadow-none : .modal-box de DaisyUI pose box-shadow:0 25px 50px
              -12px oklch(0% 0/.25) par défaut (vérifié dans le CSS généré) —
              un flottement "carte SaaS" dramatique. shadow-none (utilitaire
@@ -39,6 +40,8 @@
 <template t-name="xweb.modal_trigger">
     <t t-set="target" t-default="'xweb-modal'"/>
     <t t-set="extra_class" t-default="'btn'"/>
-    <button type="button" t-attf-class="{{extra_class}}" t-attf-_="on click call #{{target}}.showModal()"><t t-out="slot"/></button>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <button t-att-name="name or None" t-att-id="id or None" type="button" t-attf-class="{{extra_class}}" t-attf-_="on click call #{{target}}.showModal()"><t t-out="slot"/></button>
 </template>
 </templates>

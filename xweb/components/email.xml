@@ -16,7 +16,9 @@
 <templates>
 
 <template t-name="xweb.email_layout">
-<html>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+<html t-att-name="name or None" t-att-id="id or None">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -58,7 +60,9 @@
 <template t-name="xweb.email_button">
     <t t-set="href" t-default="'#'"/>
     <t t-set="color" t-default="'#111827'"/>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <table t-att-name="name or None" t-att-id="id or None" role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
         <tr>
             <td t-attf-style="background-color:{{color}}; border-radius:6px;">
                 <a t-att-href="href" style="display:inline-block; padding:12px 24px; color:#ffffff; font-size:14px; font-weight:bold; text-decoration:none;">

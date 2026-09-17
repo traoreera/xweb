@@ -96,5 +96,40 @@ await check("deux instances, deux namespaces, aucune collision de clé", () => {
   assert.equal(b.get("filtre"), "archivés");
 });
 
+await check("namespace/clé contenant ':' ne collisionnent plus (bug réel avant encodeURIComponent)", () => {
+  const { window } = newDom();
+  const a = new window.XwebStorageClass("a"); // clé "b:c" -> ancienne concat brute donnait "a:b:c"
+  const b = new window.XwebStorageClass("a:b"); // clé "c"   -> donnait AUSSI "a:b:c"
+  a.set("b:c", "valeur de a");
+  b.set("c", "valeur de b");
+  assert.equal(a.get("b:c"), "valeur de a", "écraserait/lirait la mauvaise valeur si collision");
+  assert.equal(b.get("c"), "valeur de b");
+});
+
+await check("keys() liste uniquement les clés de CE namespace, sans le préfixe", () => {
+  const { window } = newDom();
+  const a = new window.XwebStorageClass("plugin_a");
+  const b = new window.XwebStorageClass("plugin_b");
+  a.set("x", 1);
+  a.set("y", 2);
+  b.set("z", 3);
+  // JSON.stringify plutôt que deepEqual — même piège de realm jsdom que
+  // le test "aller-retour JSON" plus haut (Array d'un autre Object.prototype).
+  assert.equal(JSON.stringify(a.keys().sort()), JSON.stringify(["x", "y"]));
+  assert.equal(JSON.stringify(b.keys()), JSON.stringify(["z"]));
+});
+
+await check("clear() efface tout le namespace, jamais les autres", () => {
+  const { window } = newDom();
+  const a = new window.XwebStorageClass("plugin_a");
+  const b = new window.XwebStorageClass("plugin_b");
+  a.set("x", 1);
+  a.set("y", 2);
+  b.set("z", 3);
+  assert.equal(a.clear(), true);
+  assert.equal(JSON.stringify(a.keys()), "[]");
+  assert.equal(b.has("z"), true, "clear() de a ne doit jamais toucher b");
+});
+
 console.log(failures === 0 ? "\nTout est vert." : `\n${failures} échec(s).`);
 process.exit(failures === 0 ? 0 : 1);

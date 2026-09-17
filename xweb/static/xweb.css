@@ -78,16 +78,24 @@
   }
 
   /* xweb.popover (xweb/components/popover.xml) — masqué par défaut,
-     affiché en ajoutant .popover-open (_hyperscript). Pas de classe
-     Tailwind "hidden"/toggle : la classe .popover-open doit gagner sur
-     .popover-panel elle-même, une histoire de spécificité CSS qu'un
-     couple de classes utilitaires seules ne résout pas proprement. */
+     affiché en ajoutant .popover-open (_hyperscript).
+
+     !important nécessaire sur LES DEUX — même leçon que #xweb-sidebar
+     ci-dessous : le panneau porte aussi la classe DaisyUI `menu`, dont
+     `.menu{display:flex}` est émis dans @layer utilities (déclaré APRÈS
+     components), et `.dropdown-content` dans utilities aussi. Une couche
+     tardive bat toujours une couche plus tôt quelle que soit la
+     spécificité — sans !important, .menu force display:flex et le panneau
+     reste visible en permanence quel que soit .popover-open (bug "le
+     popover est toujours ouvert", reproduit en cascade : .menu à une
+     position > .dropdown-content dans le CSS compilé). Seul !important
+     échappe à la priorité de couche. */
   .popover-panel {
-    display: none;
+    display: none !important;
   }
 
   .popover-panel.popover-open {
-    display: block;
+    display: block !important;
   }
 
   /* xweb.sidebar_toggle (xweb/components/layout.xml) — repli desktop de

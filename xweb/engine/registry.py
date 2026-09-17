@@ -20,6 +20,11 @@ from .compiler import Compiler, TemplateError
 from .inherit import Patch, apply_patch_ops, extract_patch
 from .parser import TemplateSyntaxError, parse_templates
 
+try:
+    from xdsl.api import compile_dsl
+except ImportError:  # xdsl non installé (paquet consommateur sans la dépendance) — les .dsl resteront inconnus
+    compile_dsl = None
+
 if TYPE_CHECKING:
     from lxml import etree
 
@@ -48,7 +53,25 @@ class QwebRegistry:
         """Parse *source* and register every <template> it defines —
         either as a base template, or (if it has t-inherit) as a patch
         against one. Returns every t-name found, patches included, for
-        logging/tests."""
+        logging/tests.
+
+        A ``.dsl`` source (xdsl) is transpiled to QWeb XML first, exactly
+        like ``scripts/dsl2html.py`` does for a whole file — a plugin
+        author drops a ``.dsl`` where ``.xml`` used to sit, nothing else
+        changes (docs/dsl-design.md#architecture). The compiled XML goes
+        through the same register_source with ``filename`` kept, so error
+        messages still point at the .dsl file."""
+        if self._is_dsl_source(source, filename=filename):
+            if compile_dsl is None:
+                raise TemplateSyntaxError(
+                    f"{filename}: source .dsl mais xdsl n'est pas installé — "
+                    f"installez la dépendance xdsl (fournie avec le paquet xweb)"
+                )
+            xml_body = compile_dsl(source, filename=filename)
+            if not xml_body.startswith("<templates>"):
+                xml_body = f"<templates>\n{xml_body}\n</templates>"
+            logger.debug("%s: source .dsl transcrit en XML QWeb avant enregistrement", filename)
+            source = xml_body
         templates = parse_templates(source, filename=filename)
         for name, el in templates.items():
             patch = extract_patch(el, source_plugin=source_plugin)
@@ -107,9 +130,21 @@ class QwebRegistry:
         if not directory.is_dir():
             return []
         names: list[str] = []
-        for file in sorted(directory.glob("*.xml")):
-            names.extend(self.register_file(file, source_plugin=source_plugin))
+        for pattern in ("*.xml", "*.dsl"):
+            for file in sorted(directory.glob(pattern)):
+                names.extend(self.register_file(file, source_plugin=source_plugin))
         return names
+
+    @staticmethod
+    def _is_dsl_source(source: str, *, filename: str) -> bool:
+        """Une source est du xdsl (et doit être transcrite en XML QWeb) si
+        son nom de fichier porte l'extension .dsl, OU si son contenu ne
+        ressemble clairement pas à du XML : pas de '<' en tête après le BOM/
+        les espaces. La détection par contenu couvre register_source appelé
+        en direct avec un source .dsl et un filename générique (\"<string>\")."""
+        if filename.rsplit(".", 1)[-1].lower() == "dsl":
+            return True
+        return not source.lstrip("\ufeff \t\r\n").startswith("<")
 
     # ------------------------------------------------------------------
     # Resolution

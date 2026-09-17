@@ -35,6 +35,8 @@ def registry(tmp_path: Path) -> QwebRegistry:
 <template t-name="t.bitwise"><t t-esc="a | b"/></template>
 <template t-name="t.unknown_filter"><t t-esc="v | not_a_real_filter"/></template>
 <template t-name="t.no_pipe"><t t-esc="v"/></template>
+<template t-name="t.hs"><t t-esc="v | hs"/></template>
+<template t-name="t.js"><t t-esc="v | js"/></template>
 </templates>""",
         encoding="utf-8",
     )
@@ -159,6 +161,47 @@ def test_default_filter_recovers_a_genuinely_undefined_name(registry):
 
 def test_yesno_recovers_a_genuinely_undefined_name_as_the_empty_branch(registry):
     assert registry.render("t.yesno", {}) == "—"
+
+
+# =============================================================================
+# hs / js — protège la frontière imbriquée hyperscript/JS à l'intérieur
+# d'un attribut interpolé (xdsl `_`/`hx-vals`, docs/dsl-design.md) : t-esc
+# n'échappe que la frontière HTML, ces filtres échappent la frontière
+# hyperscript/JSON *avant* que t-esc échappe la frontière HTML par-dessus —
+# deux couches indépendantes, voir docstrings de _hs/_js.
+# =============================================================================
+
+
+def test_hs_backslash_escapes_double_quote_before_html_escape(registry):
+    # _hs("a\"b") -> 'a\\"b' (antislash + guillemet réel) ; t-esc échappe
+    # ensuite le guillemet réel en &#34; — l'antislash, lui, n'a aucun sens
+    # particulier pour l'échappement HTML et passe tel quel.
+    assert registry.render("t.hs", {"v": 'a"b'}) == "a\\&#34;b"
+
+
+def test_hs_escapes_single_quote_and_backslash(registry):
+    assert registry.render("t.hs", {"v": "a'b\\c"}) == "a\\&#39;b\\\\c"
+
+
+def test_hs_none_is_empty_string(registry):
+    assert registry.render("t.hs", {"v": None}) == ""
+
+
+def test_js_quotes_and_escapes_a_string_value(registry):
+    # json.dumps('a"b') -> '"a\\"b"' ; t-esc échappe ensuite chaque
+    # guillemet réel (les 3, y compris ceux ajoutés par json.dumps) en &#34;.
+    assert registry.render("t.js", {"v": 'a"b'}) == "&#34;a\\&#34;b&#34;"
+
+
+def test_js_number_is_unquoted(registry):
+    assert registry.render("t.js", {"v": 42}) == "42"
+
+
+def test_js_none_becomes_json_null_not_empty_string(registry):
+    # Contrairement aux autres filtres (None -> ""), `js` doit rendre un
+    # littéral JS valide même pour l'absence de valeur — "" casserait
+    # `hx-vals="js:{id: }"` (JS invalide), `null` reste une valeur JS licite.
+    assert registry.render("t.js", {"v": None}) == "null"
 
 
 def test_apply_filters_defensive_branch_for_a_name_missing_from_the_dict(monkeypatch):

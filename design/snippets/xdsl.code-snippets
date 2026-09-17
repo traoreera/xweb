@@ -1,0 +1,171 @@
+{
+  "component": {
+    "prefix": "component",
+    "body": ["component ${1:nom} {", "\t${2:div { \"$3\" }}", "}"],
+    "description": "component NOM { ... } — xdsl/parser.py::_parse_component"
+  },
+  "component with props": {
+    "prefix": "component-props",
+    "body": [
+      "component ${1:nom} {",
+      "\tprops: {",
+      "\t\t${2:champ}: ${3:\"défaut\"}",
+      "\t}",
+      "",
+      "\t${4:div { \"$5\" }}",
+      "}"
+    ],
+    "description": "component avec props: { champ: défaut }"
+  },
+  "data schema": {
+    "prefix": "data",
+    "body": [
+      "data ${1:nom_form} {",
+      "\t${2:name}: string @required @min_length(${3:3})",
+      "\t${4:email}: string @required @email",
+      "}"
+    ],
+    "description": "data NOM { champ: type @decorateurs } — xdsl/validators.py::BUILTIN_VALIDATORS (required/min_length/max_length/min/max/email/pattern/in), consommé côté serveur via xdsl.api.extract_schemas()"
+  },
+  "endpoint": {
+    "prefix": "endpoint",
+    "body": [
+      "endpoint ${1:nom_action} {",
+      "\tmethod: ${2|POST,GET,PUT,PATCH,DELETE|}",
+      "\turl: \"${3:/api/...}\"",
+      "\tsend: ${4:schema_form}",
+      "\treceive {",
+      "\t\ttype: json",
+      "\t\ttarget: \"${5:#cible}\"",
+      "\t\tevent: \"${6:nom}:changed\"",
+      "\t}",
+      "\tonsuccess { toast { variant: \"success\"  \"${7:OK}\" } }",
+      "\tonerror { toast { variant: \"error\"  \"${8:Erreur}\" } }",
+      "}"
+    ],
+    "description": "endpoint NOM { ... } — requête réseau déclarative, expansée en hx-*/_hyperscript par use: (docs/dsl-design.md#requêtes-réseau-déclaratives)"
+  },
+  "use endpoint on element": {
+    "prefix": "use",
+    "body": "use: ${1:nom_endpoint}",
+    "description": "Attache un endpoint déclaré à cet élément (form/button, brut ou t-call xweb.form/xweb.button)"
+  },
+  "channel": {
+    "prefix": "channel",
+    "body": [
+      "channel ${1:nom_flux} {",
+      "\turl: \"${2:/stream}\"",
+      "\tchannels: [\"${3:canal}\"]",
+      "\ttransport: ${4|auto,sse,ws|}",
+      "\tconnect_timeout_ms: ${5:5000}",
+      "\tonmessage {",
+      "\t\tbind: { \"${6:#cible}\": \"${7:champ}\" }",
+      "\t\trefresh: \"${8:#zone-a-recharger}\"",
+      "\t\tevent: \"${9:nom}:changed\"",
+      "\t}",
+      "}"
+    ],
+    "description": "channel NOM { ... } — abonnement SSE/WS déclaratif au-dessus de xweb/static/live_channel.js (docs/dsl-design.md#channels-temps-réel-déclaratifs)"
+  },
+  "channel with validate/persist/dispatch": {
+    "prefix": "channel-full",
+    "body": [
+      "channel ${1:nom_flux} {",
+      "\turl: \"${2:/stream}\"",
+      "\tchannels: [\"${3:canal}\"]",
+      "\ttransport: ${4|auto,sse,ws|}",
+      "\tconnect_timeout_ms: ${5:5000}",
+      "\tvalidate: \"${6:schema_form}\"",
+      "\tpersist: \"${7:clé_stockage}\"",
+      "\tonmessage {",
+      "\t\tbind: { \"${8:#cible}\": \"${9:champ}\" }",
+      "\t\trefresh: \"${10:#zone-a-recharger}\"",
+      "\t\tdispatch: true",
+      "\t\tevent: \"${11:nom}:changed\"",
+      "\t}",
+      "}"
+    ],
+    "description": "channel complet — validate: (schéma data exporté en JSON pour validators.js), persist: (xweb/static/storage.js), dispatch: (CustomEvent DOM pour du hyperscript)"
+  },
+  "onmessage block": {
+    "prefix": "onmessage",
+    "body": [
+      "onmessage {",
+      "\tbind: { \"${1:#cible}\": \"${2:champ}\" }",
+      "\trefresh: \"${3:#zone}\"",
+      "\tdispatch: ${4:true}",
+      "\tevent: \"${5:nom}:changed\"",
+      "}"
+    ],
+    "description": "onmessage { } — grammaire FERMÉE : bind/refresh/dispatch/event uniquement (xdsl/parser.py::_parse_channel_onmessage)"
+  },
+  "use_channel on element": {
+    "prefix": "use_channel",
+    "body": "use_channel: ${1:nom_flux}",
+    "description": "Attache un channel déclaré à cet élément — le compilateur y insère le <script> de bootstrap juste après"
+  },
+  "hyperscript block": {
+    "prefix": "_block",
+    "body": ["_ {", "\ton ${1:click}", "\t\t${2:toggle .hidden on me}", "}"],
+    "description": "Attribut hyperscript brut, mode BLOC (newlines significatives) — xdsl/parser.py::_read_hyperscript. Nécessaire dès que le script tient sur plusieurs lignes (le mode ligne `_: ...` s'arrête au premier \\n)."
+  },
+  "hyperscript line": {
+    "prefix": "_line",
+    "body": "_ : ${1:on click toggle .hidden on me}",
+    "description": "Attribut hyperscript brut, mode LIGNE — s'arrête au premier saut de ligne ou à la } de l'élément"
+  },
+  "hyperscript listen to channel dispatch": {
+    "prefix": "_on-channel",
+    "body": [
+      "_ {",
+      "\ton ${1:nom}:changed from document",
+      "\t\tput event.detail.data.${2:champ} into me",
+      "}"
+    ],
+    "description": "Écoute le CustomEvent diffusé par un channel { onmessage { dispatch: true } } — aucune syntaxe DSL nouvelle, du hyperscript ordinaire"
+  },
+  "copy as (primary inherit)": {
+    "prefix": "copy",
+    "body": [
+      "copy ${1:xweb.form} as ${2:mon_pkg.mon_alias} {",
+      "\txpath \"${3://button}\" { ${4:attributes: a { data-x: \"1\" }} }",
+      "}"
+    ],
+    "description": "copy SOURCE as ALIAS { xpath { ... } } — duplication non-destructive (t-inherit-mode=\"primary\"). N'accepte QUE des blocs xpath, jamais de contenu littéral (ParseError sinon — xdsl/parser.py::_parse_copy)."
+  },
+  "patch (extension inherit)": {
+    "prefix": "patch",
+    "body": [
+      "patch ${1:xweb.button} {",
+      "\txpath \"${2://button}\" { ${3:inside: span { \"badge\" }} }",
+      "}"
+    ],
+    "description": "patch CIBLE { xpath { ... } } — patch le template partagé en place (t-inherit-mode=\"extension\", défaut)"
+  },
+  "xpath attributes patch": {
+    "prefix": "xpath-attributes",
+    "body": "xpath \"${1://button}\" { attributes: a { ${2:data-x}: \"${3:1}\" } }",
+    "description": "position=\"attributes\" — SEULE forme lue par le moteur (extract_patch ne lit que <attribute name=...>value</attribute>, jamais <a x=\"y\"/>)"
+  },
+  "for loop": {
+    "prefix": "for",
+    "body": ["for ${1:item} in ${2:items} {", "\t${3:div { item.name }}", "}"],
+    "description": "for VAR in ITERABLE { ... }"
+  },
+  "if elif else": {
+    "prefix": "if",
+    "body": [
+      "if (${1:condition}) {",
+      "\t${2:span { \"vrai\" }}",
+      "} else {",
+      "\t${3:span { \"faux\" }}",
+      "}"
+    ],
+    "description": "if (cond) { } elif (cond) { } else { }"
+  },
+  "import from xweb": {
+    "prefix": "import",
+    "body": "import { ${1:button} } from \"${2:xweb}\"",
+    "description": "import { a, b } from \"pkg\""
+  }
+}

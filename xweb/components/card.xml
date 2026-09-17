@@ -23,8 +23,10 @@
        t-value="'bg-base-100 border border-base-200' if variant == 'raised' else 'card-border bg-base-100'"/>
     <t t-set="padding_class"
        t-value="{'none': '', 'xs': 'p-2', 'sm': 'p-4', 'md': 'p-6', 'lg': 'p-8', 'xl': 'p-10', '2xl': 'p-12'}[padding]"/>
+       <t t-set="name" t-default="''"/>
+       <t t-set="id" t-default="''"/>
     <t t-if="title or subheading or header or slot_header">
-        <div t-attf-class="card rounded-box {{variant_class}} {{extra_class}}">
+        <div t-att-name="name or None" t-att-id="id or None" t-attf-class="card rounded-box {{variant_class}} {{extra_class}}">
             <div class="px-6 py-4 border-b border-base-200">
                 <t t-if="title"><h3 class="card-title"><t t-esc="title"/></h3></t>
                 <t t-if="subheading">
@@ -37,7 +39,7 @@
         </div>
     </t>
     <t t-else="1">
-        <div t-attf-class="card rounded-box {{variant_class}} {{padding_class}} {{extra_class}}">
+        <div t-att-name="name or None" t-att-id="id or None" t-attf-class="card rounded-box {{variant_class}} {{padding_class}} {{extra_class}}">
             <t t-out="slot"/>
         </div>
     </t>

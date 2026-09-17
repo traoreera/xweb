@@ -390,10 +390,17 @@ await check("layout.xml — xweb.sidebar_toggle bascule data-sidebar et le persi
 // "then halt the event" sur le déclencheur, le MÊME clic qui ouvre le
 // popover est vu comme "elsewhere" par le panneau (l'event bulle jusqu'au
 // document juste après avoir ouvert le panneau) et le referme aussitôt.
+//
+// Le déclencheur cible son panneau par relation DOM ("the next
+// .popover-panel"), jamais par id — un ancien `#{{id}}-panel` faisait
+// collision dès que deux instances sans id explicite coexistaient sur une
+// page (id par défaut partagé, `#id` résout toujours vers le PREMIER
+// élément portant cet id) : cliquer le 2e déclencheur bougeait le panneau
+// du 1er. Voir le check dédié plus bas ("deux instances sans id").
 // ---------------------------------------------------------------------
 await check("popover.xml — ouvre au clic, ferme sur clic extérieur et sur Escape, jamais sur un clic à l'intérieur", async () => {
   const dom = newDom(`<!doctype html><html><body>
-    <button id="btn" _="on click toggle .popover-open on #panel then halt the event">open</button>
+    <button id="btn" _="on click toggle .popover-open on the next .popover-panel then halt the event">open</button>
     <div id="panel" class="popover-panel"
          _="on click from elsewhere remove .popover-open from me
             on keyup[key=='Escape'] from the document remove .popover-open from me">content</div>
@@ -425,6 +432,43 @@ await check("popover.xml — ouvre au clic, ferme sur clic extérieur et sur Esc
 });
 
 // ---------------------------------------------------------------------
+// xweb/components/popover.xml — deux instances SANS id explicite, donc
+// partageant le même id par défaut ('xweb-popover-panel' dans un vrai
+// rendu — ici juste 'panel' pour le test) : régression réelle, trouvée
+// en déboguant un rapport "le popover reste ouvert" — avec l'ancien
+// `#{{id}}-panel`, cliquer le déclencheur B ouvrait le panneau de A.
+// ---------------------------------------------------------------------
+await check("popover.xml — deux instances sans id explicite : cliquer B n'ouvre/ne ferme jamais le panneau de A", async () => {
+  const dom = newDom(`<!doctype html><html><body>
+    <div class="relative inline-block">
+      <button id="btnA" _="on click toggle .popover-open on the next .popover-panel then halt the event">A</button>
+      <div id="panel" class="popover-panel"
+           _="on click from elsewhere remove .popover-open from me
+              on keyup[key=='Escape'] from the document remove .popover-open from me">A content</div>
+    </div>
+    <div class="relative inline-block">
+      <button id="btnB" _="on click toggle .popover-open on the next .popover-panel then halt the event">B</button>
+      <div id="panel" class="popover-panel"
+           _="on click from elsewhere remove .popover-open from me
+              on keyup[key=='Escape'] from the document remove .popover-open from me">B content</div>
+    </div>
+  </body></html>`);
+  const { document } = dom.window;
+  dom.window._hyperscript.processNode(document.body);
+  const [panelA, panelB] = document.querySelectorAll(".popover-panel");
+
+  document.getElementById("btnB").click();
+  await tick();
+  assert.ok(!panelA.classList.contains("popover-open"), "le panneau de A ne doit pas s'ouvrir");
+  assert.ok(panelB.classList.contains("popover-open"), "le panneau de B doit s'ouvrir");
+
+  document.getElementById("btnA").click();
+  await tick();
+  assert.ok(panelA.classList.contains("popover-open"), "le panneau de A s'ouvre indépendamment");
+  assert.ok(panelB.classList.contains("popover-open"), "le panneau de B reste ouvert, non affecté par A");
+});
+
+// ---------------------------------------------------------------------
 // xweb/components/popup.xml — menu contextuel positionné au curseur.
 // Réutilise .popover-panel/.popover-open (xweb.popover) mais le
 // déclencheur est `contextmenu` + `halt the event`, posé sur la ZONE
@@ -436,9 +480,9 @@ await check("popover.xml — ouvre au clic, ferme sur clic extérieur et sur Esc
 await check("popup.xml — clic droit sur la zone positionne le panneau au curseur et l'ouvre", async () => {
   const dom = newDom(`<!doctype html><html><body>
     <div id="zone" _="on contextmenu halt the event
-                       then set #zone-panel's style.left to (event.clientX + 'px')
-                       then set #zone-panel's style.top to (event.clientY + 'px')
-                       then add .popover-open to #zone-panel">carte</div>
+                       then set (the next .popover-panel)'s style.left to (event.clientX + 'px')
+                       then set (the next .popover-panel)'s style.top to (event.clientY + 'px')
+                       then add .popover-open to the next .popover-panel">carte</div>
     <ul id="zone-panel" class="popover-panel fixed"
         _="on click from elsewhere remove .popover-open from me
            on keyup[key=='Escape'] from the document remove .popover-open from me">
@@ -465,7 +509,7 @@ await check("popup.xml — clic droit sur la zone positionne le panneau au curse
 
 await check("popup.xml — un clic droit HORS de la zone garde le menu natif du navigateur", async () => {
   const dom = newDom(`<!doctype html><html><body>
-    <div id="zone" _="on contextmenu halt the event then add .popover-open to #zone-panel">carte</div>
+    <div id="zone" _="on contextmenu halt the event then add .popover-open to the next .popover-panel">carte</div>
     <div id="ailleurs">reste de la page</div>
     <ul id="zone-panel" class="popover-panel fixed"><li>x</li></ul>
   </body></html>`);
@@ -592,6 +636,50 @@ await check("shell.xml — #xweb-sidebar resynchronise .menu-active après chaqu
   document.body.dispatchEvent(new dom.window.Event("htmx:afterSettle", { bubbles: true }));
   await tick();
   assert.equal(activeHref(), "/plugins/demo/kanban", "après une deuxième navigation boostée : Kanban actif, un seul lien à la fois");
+});
+
+// ---------------------------------------------------------------------
+// xdsl `endpoint`/`use:` (docs/dsl-design.md#requêtes-réseau) — script
+// généré par Compiler._endpoint_hyperscript. QWeb n'a pas de runtime
+// navigateur : au succès/échec d'une requête htmx, ce script bascule la
+// visibilité de deux blocs PRÉ-RENDUS côté serveur (onsuccess/onerror,
+// jamais du JSON re-templaté en JS) et diffuse un événement pour que
+// l'élément cible se re-rende lui-même depuis le serveur (receive.target).
+// ---------------------------------------------------------------------
+await check("xdsl use: — htmx:afterRequest révèle onsuccess/onerror et diffuse l'événement de rafraîchissement", async () => {
+  const SCRIPT = `on htmx:afterRequest
+  if event.detail.successful
+    remove @hidden from #save_contact-1-onsuccess
+    add @hidden to #save_contact-1-onerror
+    send save_contact:done to #contact-table
+  else
+    remove @hidden from #save_contact-1-onerror
+    add @hidden to #save_contact-1-onsuccess
+  end`;
+  const dom = newDom(`<!doctype html><html><body>
+    <form id="f"></form>
+    <div id="save_contact-1-onsuccess" hidden="hidden">Créé !</div>
+    <div id="save_contact-1-onerror" hidden="hidden">Erreur</div>
+    <div id="contact-table"></div>
+  </body></html>`);
+  const { document } = dom.window;
+  const form = document.getElementById("f");
+  form.setAttribute("_", SCRIPT);
+  dom.window._hyperscript.processNode(form);
+
+  let refreshed = false;
+  document.getElementById("contact-table").addEventListener("save_contact:done", () => (refreshed = true));
+
+  form.dispatchEvent(new dom.window.CustomEvent("htmx:afterRequest", { bubbles: true, detail: { successful: true } }));
+  await tick();
+  assert.ok(!document.getElementById("save_contact-1-onsuccess").hidden, "le bloc de succès doit apparaître");
+  assert.ok(document.getElementById("save_contact-1-onerror").hidden, "le bloc d'erreur doit rester caché");
+  assert.ok(refreshed, "l'événement de rafraîchissement doit être diffusé au succès");
+
+  form.dispatchEvent(new dom.window.CustomEvent("htmx:afterRequest", { bubbles: true, detail: { successful: false } }));
+  await tick();
+  assert.ok(document.getElementById("save_contact-1-onsuccess").hidden, "un échec doit recacher le bloc de succès");
+  assert.ok(!document.getElementById("save_contact-1-onerror").hidden, "le bloc d'erreur doit apparaître");
 });
 
 if (failures > 0) {

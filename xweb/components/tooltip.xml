@@ -2,5 +2,7 @@
     <t t-set="text" t-default="''"/>
     <t t-set="position" t-default="'top'"/>
     <t t-set="extra_class" t-default="''"/>
-    <div t-attf-class="tooltip tooltip-{{position}} {{extra_class}}" t-att-data-tip="text"><t t-out="slot"/></div>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <div t-att-name="name or None" t-att-id="id or None" t-attf-class="tooltip tooltip-{{position}} {{extra_class}}" t-att-data-tip="text"><t t-out="slot"/></div>
 </template>

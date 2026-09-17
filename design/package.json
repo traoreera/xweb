@@ -1,0 +1,58 @@
+{
+  "name": "xdsl-language",
+  "displayName": "xdsl",
+  "description": "Coloration syntaxique, icône de fichier et auto-complétion pour le DSL déclaratif xdsl (xweb/xcore-integration) — .dsl compile vers du XML QWeb.",
+  "version": "0.1.0",
+  "publisher": "xcore-integration",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Snippets"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/traoreera/xweb.git",
+    "directory": "design"
+  },
+  "activationEvents": [
+    "onLanguage:xdsl"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "xdsl",
+        "aliases": ["xdsl", "xweb DSL"],
+        "extensions": [".dsl"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/xdsl-light.svg",
+          "dark": "./icons/xdsl-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "xdsl",
+        "scopeName": "source.xdsl",
+        "path": "./syntaxes/xdsl.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "xdsl",
+        "path": "./snippets/xdsl.code-snippets"
+      }
+    ]
+  },
+  "scripts": {
+    "generate:catalog": "cd .. && uv run python design/scripts/generate_components_catalog.py",
+    "verify:grammar": "node test/verify-grammar.mjs",
+    "verify:completions": "node test/verify-completions.mjs"
+  },
+  "devDependencies": {
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.0.0"
+  }
+}

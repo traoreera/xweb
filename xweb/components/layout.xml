@@ -8,17 +8,27 @@
         du document : son contenu est couvert par XWEB_THEME_SCRIPT_HASH.
     -->
     <template t-name="xweb.shell_head">
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title><t t-esc="page_title"/></title>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+        <meta t-att-name="name or None" t-att-id="id or None" charset="utf-8"/>
+        <meta t-att-name="name or None" t-att-id="id or None" name="viewport" content="width=device-width, initial-scale=1"/>
+        <title t-att-name="name or None" t-att-id="id or None"><t t-esc="page_title"/></title>
 
-        <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';document.documentElement.dataset.sidebar = localStorage.getItem('sidebar') || 'expanded';</script>
+        <script t-att-name="name or None" t-att-id="id or None">document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';document.documentElement.dataset.sidebar = localStorage.getItem('sidebar') || 'expanded';</script>
 
-        <link rel="icon" href="data:,"/>
-        <link rel="stylesheet" href="/xweb-static/app.css"/>
-        <script src="/xweb-static/htmx.min.js"></script>
-        <script src="/xweb-static/_hyperscript.min.js"></script>
-        <script src="/xweb-static/storage.js"></script>
+        <link t-att-name="name or None" t-att-id="id or None" rel="icon" href="data:,"/>
+        <link t-att-name="name or None" t-att-id="id or None" rel="stylesheet" href="/xweb-static/app.css"/>
+        <script t-att-name="name or None" t-att-id="id or None" src="/xweb-static/htmx.min.js"></script>
+        <script t-att-name="name or None" t-att-id="id or None" src="/xweb-static/_hyperscript.min.js"></script>
+        <script t-att-name="name or None" t-att-id="id or None" src="/xweb-static/storage.js"></script>
+        <!-- live_channel.js/validators.js : inertes tant qu'aucune page ne
+             s'en sert (ils ne font que définir XwebLiveChannel/XwebValidate,
+             aucune connexion ni effet au chargement) — chargés ici comme
+             storage.js pour que le <script> émis par `use_channel:`/`validate:`
+             (xdsl/compiler.py::_write_channel_bootstrap) les trouve déjà en
+             place, sans que chaque page ait à les ajouter à la main. -->
+        <script t-att-name="name or None" t-att-id="id or None" src="/xweb-static/live_channel.js"></script>
+        <script t-att-name="name or None" t-att-id="id or None" src="/xweb-static/validators.js"></script>
     </template>
 
 
@@ -41,9 +51,11 @@
     -->
     <template t-name="xweb.topbar_slot">
         <t t-set="content" t-default="''"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
         <t t-if="content">
-            <div class="xweb-topbar-slot flex items-center gap-1">
+            <div t-att-name="name or None" t-att-id="id or None" class="xweb-topbar-slot flex items-center gap-1">
                 <t t-out="content"/>
             </div>
         </t>
@@ -53,8 +65,10 @@
     <!-- Toggle sidebar desktop -->
     <template t-name="xweb.sidebar_toggle">
         <t t-set="extra_class" t-default="''"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
-        <button type="button"
+        <button t-att-name="name or None" t-att-id="id or None" type="button"
                 aria-label="Replier ou déplier le panneau de navigation"
                 title="Replier ou déplier le panneau"
                 t-attf-class="btn btn-ghost btn-square btn-sm hidden lg:inline-flex text-base-content/60 hover:text-base-content hover:bg-base-content/5 {{extra_class}}"
@@ -81,8 +95,9 @@
     <template t-name="xweb.theme_toggle">
         <t t-set="id" t-default="'theme-btn'"/>
         <t t-set="extra_class" t-default="''"/>
+        <t t-set="name" t-default="''"/>
 
-        <button type="button"
+        <button t-att-name="name or None" type="button"
                 t-att-id="id"
                 aria-label="Basculer le thème"
                 title="Thème clair ou sombre"
@@ -111,9 +126,11 @@
         <t t-set="locale" t-default="'fr'"/>
         <t t-set="locales" t-default="['fr']"/>
         <t t-set="labels" t-default="{}"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
         <t t-if="locales and locales[1:]">
-            <div class="dropdown dropdown-end">
+            <div t-att-name="name or None" t-att-id="id or None" class="dropdown dropdown-end">
                 <div tabindex="0"
                      role="button"
                      class="btn btn-ghost btn-sm px-2 font-mono text-xs uppercase text-base-content/60 hover:text-base-content hover:bg-base-content/5"
@@ -150,8 +167,10 @@
     -->
     <template t-name="xweb.shell_minimal">
         <t t-set="topbar_content" t-default="''"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
-        <html>
+        <html t-att-name="name or None" t-att-id="id or None">
             <head>
                 <t t-call="xweb.shell_head"
                    t-att-page_title="page_title"/>
@@ -213,8 +232,10 @@
     <template t-name="xweb.marketing_layout">
         <t t-set="topbar_content" t-default="''"/>
         <t t-set="demo_path" t-default="None"/>
+        <t t-set="name" t-default="''"/>
+        <t t-set="id" t-default="''"/>
 
-        <html>
+        <html t-att-name="name or None" t-att-id="id or None">
             <head>
                 <t t-call="xweb.shell_head"
                    t-att-page_title="page_title"/>

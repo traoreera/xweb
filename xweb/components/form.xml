@@ -10,7 +10,9 @@
 <templates>
 <template t-name="xweb.csrf">
     <t t-set="token" t-default="''"/>
-    <input type="hidden" name="csrf_token" t-att-value="token"/>
+    <t t-set="name" t-default="''"/>
+    <t t-set="id" t-default="''"/>
+    <input t-att-name="name or None" t-att-id="id or None" type="hidden" name="csrf_token" t-att-value="token"/>
 </template>
 
 <template t-name="xweb.form">
@@ -21,10 +23,34 @@
     <t t-set="id" t-default="''"/>
     <t t-set="multipart" t-default="False"/>
     <t t-set="extra_class" t-default="'flex flex-col gap-4'"/>
+    <t t-set="style" t-default="''"/>
     <t t-set="boost_off" t-value="boost in (False, 'false', 'False', '0', 0)"/>
-    <form t-att-id="id or None" t-att-method="method" t-att-action="action or None"
+    <t t-set="name" t-default="''"/>
+    <!-- Passthrough scripting (_hyperscript/htmx) de l'appelant — même
+         convention que xweb.button : `use: nom_endpoint` (xdsl) pose ces
+         hx-*/_ en attributs statiques du t-call, projetés ici en props
+         snake_case. Sans elles, `use:` sur xweb.form serait silencieusement
+         inerte (les props inconnues d'un t-call sont juste ignorées). -->
+    <t t-set="_" t-default="None"/>
+    <t t-set="hx_get" t-default="None"/>
+    <t t-set="hx_post" t-default="None"/>
+    <t t-set="hx_put" t-default="None"/>
+    <t t-set="hx_delete" t-default="None"/>
+    <t t-set="hx_target" t-default="None"/>
+    <t t-set="hx_swap" t-default="None"/>
+    <t t-set="hx_trigger" t-default="None"/>
+    <t t-set="hx_headers" t-default="None"/>
+    <t t-set="hx_indicator" t-default="None"/>
+    <t t-set="hyperscript" t-value="_ if _.__class__.__name__ == 'str' else None"/>
+    <form t-att-name="name or None" t-att-id="id or None" t-att-method="method" t-att-action="action or None"
           t-att-enctype="'multipart/form-data' if multipart else None"
           t-att-hx-boost="'false' if boost_off else None"
+          t-att-style="style or None"
+          t-att-_="hyperscript" t-att-hx-get="hx_get or None" t-att-hx-post="hx_post or None"
+          t-att-hx-put="hx_put or None" t-att-hx-delete="hx_delete or None"
+          t-att-hx-target="hx_target or None" t-att-hx-swap="hx_swap or None"
+          t-att-hx-trigger="hx_trigger or None" t-att-hx-headers="hx_headers or None"
+          t-att-hx-indicator="hx_indicator or None"
           t-attf-class="{{extra_class}}">
         <t t-if="method.lower() == 'post'"><t t-call="xweb.csrf" t-att-token="token"/></t>
         <t t-out="slot"/>

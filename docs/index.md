@@ -25,6 +25,7 @@
 | [`plugins.md`](plugins.md) | Guide auteur de plugin |
 | [`migration-guide.md`](migration-guide.md) | Checklist de parité et procédure de bascule |
 | [`cli.md`](cli.md) | Commandes `xweb` en ligne de commande |
+| [`dsl-design.md`](dsl-design.md) | **En cours** — DSL déclaratif QML-like, sucre syntaxique pour QWeb |
 
 ## Ce qu'est xweb en une phrase
 
