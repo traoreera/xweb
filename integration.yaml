@@ -31,7 +31,8 @@ services:
         # `namespaces:` reste disponible si CE projet voulait un jour son
         # propre dossier de templates partagés en plus — pas le cas ici :
         # chaque hôte monte ses propres templates sur `app` directement.
-        namespaces: {}
+        namespaces:
+          site: "xsite/templates"
         # docs/i18n.md — codes en plus du français source ("fr", jamais
         # listé lui-même : xweb/i18n.py::Catalog n'a besoin d'aucun fichier
         # pour lui, _() y est l'identité).

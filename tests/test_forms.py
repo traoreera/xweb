@@ -67,6 +67,34 @@ def test_translate_false_keeps_pydantics_raw_english_text():
     assert result.errors["email"] == "Field required"
 
 
+def test_parse_form_accepts_models_built_from_xdsl_data_schemas():
+    """Le pont `data {}` → Pydantic (xdsl/api.py::extract_models) fournit un
+    BaseModel que parse_form accepte tel quel — le câblage « schémas Pydantic
+    comme source de vérité » : une route HTML valide et re-rend sans jamais
+    redéfinir les règles à la main. Le type déclaré y est réellement appliqué
+    (age: int, `@min`/`@max` levés), les messages DSL sortent préfixés
+    « Erreur : » par le contrat value_error de forms.py (voir le test
+    value_error ci-dessus), un `@required` absent → « Champ requis. »."""
+    import textwrap
+
+    from xdsl.api import extract_models
+
+    models = extract_models(textwrap.dedent("""
+        data contact_form {
+            name: string @required @min_length(3)
+            age: int @min(0) @max(120)
+        }
+    """))
+    ok = parse_form(FormData([("name", "Alice"), ("age", "30")]), models["contact_form"])
+    assert ok.ok and ok.data.age == 30
+    bad = parse_form(FormData([("name", "Al"), ("age", "200")]), models["contact_form"])
+    assert not bad.ok
+    assert bad.errors["name"] == "Erreur : Minimum 3 caractères"
+    assert bad.errors["age"] == "Erreur : La valeur maximale est 120"
+    missing = parse_form(FormData([("age", "30")]), models["contact_form"])
+    assert missing.errors["name"] == "Champ requis."
+
+
 class BoundedForm(BaseModel):
     age: int = Field(ge=18)
     bio: str = Field(min_length=3)

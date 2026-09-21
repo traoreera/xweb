@@ -20,14 +20,14 @@ recopié tel quel :
     `studio/xweb/assets/htmx.meta.yaml` (`forbidden_families`) pour pourquoi le
     Studio la refuse plutôt que de la lister comme un attribut hx-* de
     plus. `_hyperscript`, de son côté, interprète sa propre DSL au
-    runtime et a probablement un besoin similaire à `'unsafe-eval'` —
-    **non vérifié contre sa documentation**, à confirmer avant de retirer
-    `'unsafe-eval'` d'ici.
+    runtime via `new Function` — **confirmé** en inspectant
+    `xweb/static/_hyperscript.min.js` — `'unsafe-eval'` est donc requis
+    et justifié, conservé dans `script-src`.
   - Le hash SHA-256 du script inline anti-flash de thème est calculé
     (`XWEB_THEME_SCRIPT_HASH` ci-dessous) contre le texte réellement rendu
     de `xweb/components/shell.xml`, pas deviné depuis le source — un vrai bug
     de compilateur trouvé en le calculant : `escape()` transformait `'`
-    en `&#39;` dans le `<script>`, qu'un navigateur exécute littéralement
+    en `'` dans le `<script>`, qu'un navigateur exécute littéralement
     (SyntaxError) puisque `<script>`/`<style>` ne décodent jamais les
     entités HTML (corrigé dans `engine/compiler.py`, `_RAW_TEXT_TAGS`).
     `test_security.py::test_theme_script_hash_matches_the_real_rendered_shell`
@@ -37,8 +37,8 @@ recopié tel quel :
     inline dans `xweb.shell_head`, un seul hash à maintenir, jamais renommé
     depuis pour éviter de casser les imports existants sans bénéfice réel.
 
-`report_only=True` reste le défaut prudent, comme dans xui : à l'app
-hôte de décider quand passer en mode enforce (`report_only=False`).
+Le défaut est maintenant `report_only=False` (mode enforce) — l'app hôte
+peut repasser en report-only si besoin (`report_only=True`).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ XWEB_THEME_SCRIPT_HASH = "sha256-sFZmuJND1Rv3DCIDxo/AdqToolUoyy6nf4XqE52s4G8="
 
 DEFAULT_CSP = (
     "default-src 'self'; "
-    f"script-src 'self' 'unsafe-eval' '{XWEB_THEME_SCRIPT_HASH}'; "  # voir docstring — _hyperscript non confirmé
+    f"script-src 'self' 'unsafe-eval' '{XWEB_THEME_SCRIPT_HASH}'; "  # voir docstring — _hyperscript confirmé (new Function)
     "style-src-elem 'self'; "
     "style-src-attr 'unsafe-inline'; "  # DaisyUI + t-attf-style dynamiques, même situation que xui
     "img-src 'self' data:; "
@@ -71,7 +71,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     Args:
         report_only: mode Content-Security-Policy-Report-Only (surveille
-            sans bloquer) — à passer False en production.
+            sans bloquer) — défaut False (enforce). Passer True pour
+            report-only (ex: développement).
         exclude_paths: préfixes de chemins non couverts.
         csp: directive CSP (défaut DEFAULT_CSP).
     """
@@ -79,7 +80,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        report_only: bool = True,
+        report_only: bool = False,
         exclude_paths: Sequence[str] = (),
         csp: str = DEFAULT_CSP,
     ) -> None:

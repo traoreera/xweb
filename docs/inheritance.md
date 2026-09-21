@@ -84,6 +84,44 @@ Après ça : `xweb.button` rend exactement comme avant — inchangé, jamais tou
 
 Testé dans `tests/test_inherit.py` : duplication sans toucher la cible, appelable via `t-call`, chaîne à plusieurs niveaux, composition avec `extension`, erreur claire sur cible manquante, copie pure sans `<xpath>`, nettoyage au unload de plugin (résolu ou non), résolution anticipée au boot.
 
+## xpatch — copie-modification par rendu (`<t t-copy>`)
+
+**Implémenté** — `xweb/engine/compiler.py::_render_copy`, les tests dans `tests/test_compiler.py` (branches `t-copy`) et `xdsl/tests/test_compiler.py` (`TestInlineCopy`, `TestInlineCopyEndToEnd`).
+
+`extension` patche en place, `primary` duplique au niveau *template* — les deux sont **globaux** : ils s'enregistrent dans le registre, se résolvent au boot et s'appliquent à **tous** les appelants, ce qui peut déclencher des conflits entre plugins (`check_all()`). `t-copy` est la troisième manière, **par rendu et scoped à un fragment** : elle prend une *snapshot* de l'arbre **déjà résolu** de la cible (patches `extension`/`primary` compris), applique ses propres `<xpath>` **sur la copie seulement**, rend la copie, et **ne laisse aucune trace** — la source n'est jamais modifiée, rien n'est enregistré globalement, et deux pages peuvent donc composer un même template partagé différemment sans jamais se rejoindre dans un conflit.
+
+```xml
+<template t-name="expeditions.page_head">
+    <head>
+        <t t-copy="xweb.shell_head">
+            <xpath expr="//link[@rel='stylesheet']" position="after">
+                <link rel="stylesheet" href="/expeditions/site.css"/>
+            </xpath>
+        </t>
+    </head>
+</template>
+```
+
+- **Cible** : `t-copy="<t-name>"` — se résout via `QwebRegistry.get()`, **arbre résolu** (toute patch `extension`/`primary` déjà enregistrée sur la cible est dans la snapshot).
+- **Ops** : enfants `<xpath expr="…" position="…">…</xpath>`, mêmes expressions et **mêmes positions** que `t-inherit` (voir [le tableau](#position)) — le vocabulaire est partagé : `xweb/engine/inherit.py::parse_xpath_ops` sert aux deux (`extract_patch` et `_render_copy`). Tout enfant **non-`<xpath>`** est une `TemplateError` — jamais du contenu silencieusement perdu.
+- **Props** : comme `t-call` — `t-att-*`/attributs bruts passent (résolvés côté appelant, isolés dans la copie), **pas de slot** : l'endroit d'insertion est déjà décrit par les `position` des `<xpath>`, un contenu nominal n'aurait aucun sens.
+- **Cible inconnue** → `TemplateError` au rendu.
+
+### Sucre xdsl : `copy:` + `xpatch`
+
+```dsl
+component expeditions.page_head {
+    head {
+        copy: "xweb.shell_head"
+        xpatch { expr: "//link[@rel='stylesheet']"; position: "after"
+            link { rel: "stylesheet"; href: "/expeditions/site.css" }
+        }
+    }
+}
+```
+
+Compile en `<head t-copy="xweb.shell_head"><xpath expr="…" position="after">…</xpath></head>`. `copy:` est un **nom de template littéral** entre guillemets (jamais une expression — la cible est résolue par nom brut dans le registre, comme `patch`/`use`). Les blocs `xpatch { expr: …; position: …; … }` sont les seuls enfants admis (CompileError sinon), les positions incluent `attributes` (enfants `link { disabled: "true" }` → `<attribute …/>`), et un élément void ne peut pas porter de `copy:` (pas de corps pour les ops — CompileError explicite).
+
 ## Ce qui n'est délibérément pas fait
 
 - Pas de résolution XPath dynamique par requête — l'arbre fusionné est calculé une fois par changement de `PatchRegistry.version`, puis compilé et mis en cache (voir *xweb Blueprint* §5, diagramme des trois temps).

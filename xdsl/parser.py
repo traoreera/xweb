@@ -185,6 +185,28 @@ class Element:
     void: bool = False  # True = auto-fermant
 
 
+# Types primitifs de `data` — les SEULS noms de type que DataField.value_type
+# peut porter "tels quels". Tout AUTRE ident dans value_type est une
+# RÉFÉRENCE à un autre `data` (composition : `address: address`), sauf la
+# forme `list[item]` (liste d'objets composés : `phones: list[phone]`).
+PRIMITIVE_TYPES = {"string", "int", "float", "bool", "list", "dict"}
+
+
+def split_value_type(value_type: str) -> tuple[str, str]:
+    """Décompose un DataField.value_type en (forme, cible) :
+    - ("primitive", "string"|"int"|...) pour un type simple,
+    - ("ref", "nom") pour une référence à un autre `data` (composition),
+    - ("list", "item") pour `list[item]` — item : primitif OU référence.
+    C'est la SEULE interprétation partagée entre parser/compilateur/
+    pydantic_bridge/api/validators.js (port JS dans _schema_to_json à la
+    même logique) — pas de parsing du même textuel à chaque étage."""
+    if value_type.startswith("list["):
+        return "list", value_type[len("list["):-1]
+    if value_type in PRIMITIVE_TYPES:
+        return "primitive", value_type
+    return "ref", value_type
+
+
 @dataclass
 class DataField:
     """Un champ d'un schéma `data` — type + règles de validation (@decorators,
@@ -192,14 +214,18 @@ class DataField:
     sans décorateur `@required` est optionnel (Required est juste une règle
     de validation parmi d'autres, jamais un flag séparé — cohérent avec
     xdsl/validators.py où "required" est déjà une entrée de BUILTIN_VALIDATORS,
-    pas un cas à part)."""
+    pas un cas à part).
+
+    `value_type` porte soit un PRIMITIVE_TYPES, soit une RÉFÉRENCE à un autre
+    `data` (composition, ex. `address: address`), soit `list[item]` (liste
+    typée, item primitif ou référence) — voir split_value_type()."""
 
     name: str
-    # string|int|float|bool|list|dict — voir validators.OneOf.type_map.
-    # PAS nommé `type` : le sérialiseur JSON (xdsl/serialize.py) réserve
-    # cette clé comme discriminant de nœud — trouvé en cassant le round-
-    # trip .xdsl.json pour de vrai (`ReceiveSpec.type` a fait la même
-    # erreur, voir juste plus bas).
+    # string|int|float|bool|list|dict | nom d'un autre data | list[item] —
+    # voir split_value_type(). PAS nommé `type` : le sérialiseur JSON
+    # (xdsl/serialize.py) réserve cette clé comme discriminant de nœud —
+    # trouvé en cassant le round-trip .xdsl.json pour de vrai
+    # (`ReceiveSpec.type` a fait la même erreur, voir juste plus bas).
     value_type: str = "string"
     decorators: list[tuple[str, list[Any]]] = field(default_factory=list)  # [("required", []), ("min_length", [3])]
 
@@ -238,6 +264,12 @@ class ReceiveSpec:
     schema: str | None = None
     target: str | None = None
     event: str | None = None
+    # True = la réponse JSON attendue est un TABLEAU (ex. un GET qui
+    # retourne la liste des contacts) plutôt qu'un objet unique — la
+    # validation client (XwebValidate) lui applique alors XwebValidate(
+    # name, payload, {list: true}). Ce champ s'appelle `list` (pas `type`),
+    # sans conflit avec le discriminant réservé du sérialiseur.
+    list: bool = False
 
 
 @dataclass
@@ -1284,10 +1316,19 @@ class Parser:
         return schema
 
     def _parse_data_field(self) -> DataField:
-        """Parse: nom: type @decorateur @decorateur(args)..."""
+        """Parse: nom: type @decorateur @decorateur(args)...
+        `type` peut être un primitif (string/int/float/bool/list/dict), une
+        RÉFÉRENCE à un autre `data` (composition — `address: address`), ou
+        `list[item]` (liste typée — `phones: list[phone]`)."""
         name = self._expect_ident()
         self._expect(TokenKind.COLON)
         type_name = self._expect_ident()
+        if type_name == "list" and self.current.kind == TokenKind.LBRACKET:
+            # list[item] — liste typée (item : primitif OU référence).
+            self._advance()
+            item_name = self._expect_ident()
+            self._expect(TokenKind.RBRACKET)
+            type_name = f"list[{item_name}]"
         decorators = self._parse_decorators()
         return DataField(name=name, value_type=type_name, decorators=decorators)
 
@@ -1381,7 +1422,8 @@ class Parser:
         return ep
 
     def _parse_receive_spec(self) -> ReceiveSpec:
-        """Parse: receive { type: json  schema: nom  target: "#id"  event: "nom" }"""
+        """Parse: receive { type: json  schema: nom  target: "#id"  event: "nom"
+        list: true }"""
         self._expect(TokenKind.LBRACE)
         self._skip_newlines()
 
@@ -1399,6 +1441,10 @@ class Parser:
                 spec.target = str(value)
             elif key == "event":
                 spec.event = str(value)
+            elif key == "list":
+                if not isinstance(value, bool):
+                    raise ParseError("list n'accepte que true/false", key_token)
+                spec.list = value
             else:
                 raise ParseError(f"Clé de receive inconnue: {key!r}", key_token)
             self._match(TokenKind.COMMA)
@@ -1748,7 +1794,12 @@ class Parser:
         if self.current.kind == TokenKind.HYPERSCRIPT_SCRIPT:
             return True
 
-        if self.current.kind != TokenKind.IDENT and self.current.kind != TokenKind.STYLE:
+        # Copyright — le COPY token est un nom d'attribut DÉDIÉ à la
+        # copie-modification inline (copy: "target", docs/inheritance.md
+        # #xpatch), comme `style:` l'est pour les styles CSS — les deux
+        # passent malgré leur mot-clé réservé ; le reste des mots-clés
+        # reste exclu ci-dessous.
+        if self.current.kind not in (TokenKind.IDENT, TokenKind.STYLE, TokenKind.COPY):
             return False
 
         # Les mots-clés ne sont pas des attributs
@@ -1759,7 +1810,6 @@ class Parser:
             TokenKind.ELIF,
             TokenKind.COMPONENT,
             TokenKind.PATCH,
-            TokenKind.COPY,
             TokenKind.SLOT,
             TokenKind.RAW,
             TokenKind.TR,
@@ -1789,8 +1839,12 @@ class Parser:
                 interpolated="${" in token.value,
             )
 
-        # Le nom peut être un IDENT ou un mot-clé utilisable comme attribut (style:)
-        if self.current.kind == TokenKind.STYLE:
+        # Le nom peut être un IDENT ou un mot-clé utilisable comme attribut
+        # (style:, copy:) — même double-usage déjà toléré pour `tr` (balise
+        # <tr>) et `style:` (attribut CSS). `copy:` (attribut inline de la
+        # copie-modification, docs/inheritance.md#xpatch) passe par ici,
+        # hors du chemin mot-clé réservé de _parse_node.
+        if self.current.kind in (TokenKind.STYLE, TokenKind.COPY):
             name = self._advance().value
         else:
             name = self._expect_ident()

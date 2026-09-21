@@ -76,8 +76,100 @@ for data in DICT_CASES:
     errors = validate_dict(data, schema_validators)
     dict_results.append({"data": data, "errors": errors, "valid": errors == {}})
 
+# ---------------------------------------------------------------------------
+# COMPOSITION (`address: address`, `phones: list[phone]`) — la source de
+# vérité est le VRAI extract_models/validate_model/validate_model_list
+# (pydantic) ; validators.js doit produire les MÊMES erreurs, clés
+# normalisées (Python utilise `phones.0.number`, JS `phones[0].number` —
+# même chemin, deux conventions).
+# ---------------------------------------------------------------------------
+from xdsl.api import extract_models, validate_model, validate_model_list  # noqa: E402
+from xdsl.compiler import _schema_to_json  # noqa: E402
+from xdsl.parser import Parser  # noqa: E402
+
+COMPOSED_SRC = """
+data address { street: string @required  city: string @required }
+data phone  { number: string @required @pattern("[0-9]+") }
+data contact {
+    name: string @required
+    address: address
+    phones: list[phone]
+    tags: list[string]
+}
+"""
+composed_models = extract_models(COMPOSED_SRC)
+composed_schemas = {
+    s.name: _schema_to_json(s) for s in Parser(COMPOSED_SRC).parse().data_schemas
+}
+
+COMPOSED_CASES = [
+    {
+        "schema": "contact",
+        "list": False,
+        "data": {
+            "name": "Alice",
+            "address": {"street": "1 rue", "city": "Paris"},
+            "phones": [{"number": "0601020304"}],
+            "tags": ["admin"],
+        },
+    },
+    {
+        "schema": "contact",
+        "list": False,
+        "data": {"name": "Alice", "address": {"street": "1 rue"}},  # city requis absent
+    },
+    {
+        "schema": "contact",
+        "list": False,
+        "data": {
+            "name": "x",
+            "address": {"street": "s", "city": "c"},
+            "phones": [{"number": "abc"}],  # @pattern("[0-9]+") violé au nested
+            "tags": [5],  # list[string] mais int
+        },
+    },
+    {
+        "schema": "contact",
+        "list": False,
+        "data": {"name": "Alice", "address": "pas un objet"},  # ref en string
+    },
+    {
+        "schema": "contact",
+        "list": True,
+        "data": [
+            {"name": "Alice", "address": {"street": "s", "city": "c"}, "phones": [], "tags": []},
+            {"name": "Bob", "address": {"street": "s"}},  # city manquant au 2e item
+        ],
+    },
+    {
+        "schema": "contact",
+        "list": True,
+        "data": {"name": "pas une liste"},
+    },
+]
+composed_results = []
+for case in COMPOSED_CASES:
+    model = composed_models[case["schema"]]
+    if case["list"]:
+        errors = validate_model_list(model, case["data"])
+    else:
+        errors = validate_model(model, case["data"])
+    composed_results.append(
+        {"schema": case["schema"], "list": case["list"], "data": case["data"], "errors": errors}
+    )
+
 (ROOT / ".verify-validators.json").write_text(
-    json.dumps({"vectors": results, "schema": SCHEMA_JSON, "dict_cases": dict_results}, ensure_ascii=False, indent=2),
+    json.dumps(
+        {
+            "vectors": results,
+            "schema": SCHEMA_JSON,
+            "dict_cases": dict_results,
+            "composed_schemas": composed_schemas,
+            "composed_cases": composed_results,
+        },
+        ensure_ascii=False,
+        indent=2,
+    ),
     encoding="utf-8",
 )
 print("écrit :", ROOT / ".verify-validators.json")

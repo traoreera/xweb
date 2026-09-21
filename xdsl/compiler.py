@@ -5,6 +5,7 @@ Respecte le mapping complet défini dans `docs/dsl-design.md`.
 
 from __future__ import annotations
 
+import json
 import xml.sax.saxutils as saxutils
 from typing import Any
 
@@ -23,12 +24,17 @@ from .parser import (
     IfBlock,
     Import,
     PatchDef,
+    Position,
+    PRIMITIVE_TYPES,
     Props,
     SlotNode,
     Style,
     TextNode,
     XpathPatch,
+    split_value_type,
 )
+
+from .pydantic_bridge import build_model
 
 VOID_ELEMENTS = {
     "area", "base", "br", "col", "embed", "hr", "img", "input",
@@ -180,8 +186,32 @@ def _schema_to_json(schema: DataSchemaDef) -> dict[str, list[list[Any]]]:
     pas de tuple), lu ensuite par xweb/static/validators.js::XwebValidate.
     Ne couvre QUE les règles de xdsl/validators.py::BUILTIN_VALIDATORS —
     la même liste fermée des deux côtés (serveur ET client), voir
-    validators.js pour le miroir exact de chaque règle."""
-    return {f.name: [[rule, list(args)] for rule, args in f.decorators] for f in schema.fields}
+    validators.js pour le miroir exact de chaque règle.
+
+    COMPOSITION (`address: address`, `phones: list[phone]`) : un champ dont
+    le type n'est pas un primitif ajoute une pseudo-règle qui n'existe PAS
+    dans BUILTIN_VALIDATORS (jamais envoyée à make_validator) —
+    `["ref", [nom]]` pour un objet imbriqué, `["list", [item]]` pour une
+    liste typée — que validators.js interprète pour DESCENDRE (erreurs
+    préfixées `address.street`, `phones[0].number`). Split par
+    split_value_type (parser.py), la même décomposition qu'à tous les
+    autres étages."""
+    out: dict[str, list[list[Any]]] = {}
+    for f in schema.fields:
+        kind, item = split_value_type(f.value_type)
+        rules: list[list[Any]] = [[rule, list(args)] for rule, args in f.decorators]
+        if kind == "ref":
+            rules.append(["ref", [f.value_type]])
+        elif kind == "list" and item not in PRIMITIVE_TYPES:
+            # list[item] avec item non primitif = liste d'OBJETS composés.
+            rules.append(["list", [item]])
+        elif kind == "list":
+            # list[item] avec item PRIMITIF (`list[string]`) : la pseudo-
+            # règle `list` fait quand même le contrôle d'array + chaque item
+            # (parité avec l'annotation Pydantic list[str] qui, elle, type).
+            rules.append(["list", [item]])
+        out[f.name] = rules
+    return out
 
 
 class Compiler:
@@ -504,7 +534,8 @@ class Compiler:
             self._write_channel_bootstrap(channel)
 
     def _compile_raw_element(self, node: Element, scope: dict[str, str]) -> None:
-        attrs, channel = self._resolve_use_channel(node.attributes)
+        attrs, copy_name = self._resolve_copy(node)
+        attrs, channel = self._resolve_use_channel(attrs)
         attrs, ep, use_id = self._resolve_use(attrs)
         extra_attrs: list[Attribute] = []
         inject_csrf = False
@@ -512,20 +543,47 @@ class Compiler:
             extra_attrs = self._endpoint_attrs(ep, use_id)
             inject_csrf = node.tag == "form" and ep.method in ("POST", "PUT", "PATCH", "DELETE")
 
-        html_attrs = self._build_html_attrs(attrs + extra_attrs)
-        void = node.void or node.tag in VOID_ELEMENTS
-
-        if void or (not node.children and not inject_csrf):
-            self._write(f"<{node.tag}{html_attrs}/>")
-        else:
+        if copy_name is not None:
+            # Copie-modification inline (docs/inheritance.md#xpatch) : le
+            # corps n'est composé QUE de blocs `xpath expr position {}`,
+            # compilés mot pour mot dans les opérations de l'arbre copié.
+            if node.tag in VOID_ELEMENTS:
+                raise CompileError(
+                    f"copy: {copy_name!r} ne peut pas être monté sur un élément "
+                    f"void (<{node.tag}> doit avoir un corps pour porter les "
+                    f"blocs `xpatch`)"
+                )
+            html_attrs = self._build_html_attrs(
+                [*attrs, *extra_attrs, Attribute(name="t-copy", value=copy_name)]
+            )
             self._write(f"<{node.tag}{html_attrs}>")
             self.indent += 1
-            if inject_csrf:
-                self._write('<t t-call="xweb.csrf" t-att-token="csrf_token"/>')
             for child in node.children:
-                self._compile_node(child, scope)
+                if isinstance(child, Element) and child.tag == "xpatch":
+                    self._compile_inline_xpath(child, scope)
+                else:
+                    raise CompileError(
+                        f"copy: {copy_name!r} n'accepte que des blocs `xpatch` "
+                        f"(expr: <xpath> ; position: avant/après/dans/remplace/"
+                        f"attributs) dans son corps"
+                    )
             self.indent -= 1
             self._write(f"</{node.tag}>")
+        else:
+            html_attrs = self._build_html_attrs(attrs + extra_attrs)
+            void = node.void or node.tag in VOID_ELEMENTS
+
+            if void or (not node.children and not inject_csrf):
+                self._write(f"<{node.tag}{html_attrs}/>")
+            else:
+                self._write(f"<{node.tag}{html_attrs}>")
+                self.indent += 1
+                if inject_csrf:
+                    self._write('<t t-call="xweb.csrf" t-att-token="csrf_token"/>')
+                for child in node.children:
+                    self._compile_node(child, scope)
+                self.indent -= 1
+                self._write(f"</{node.tag}>")
 
         if ep is not None:
             self._write_endpoint_scaffolding(ep, use_id)
@@ -612,29 +670,68 @@ class Compiler:
         `{nom}:done`) vers `receive.target` — c'est à CET élément
         d'écouter avec un vrai `hx-trigger` pour se re-rendre depuis le
         serveur (même idiome que calendar:select -> datepicker.xml,
-        jamais de rendu JSON côté client, QWeb est server-only)."""
+        jamais de rendu JSON côté client, QWeb est server-only).
+
+        `receive.schema` est CÂBLÉ ici (pas juste documenté) : au succès
+        HTTP, la réponse JSON est validée via window.XwebValidate (le
+        schéma est exporté par _write_endpoint_scaffolding, comme le
+        bootstrap d'un `channel`) — une réponse invalide passe par le
+        chemin ERREUR (onerror), jamais onsuccess ni l'event de refresh ;
+        un corps non-JSON est traité comme invalide, jamais une exception.
+
+        IMPORTANT (piège réel trouvé en testant) : le script est écrit
+        multi-ligne pour la lisibilité du XML compilé, MAIS lxml normalise
+        les `\n` des attributs XML en espaces au round-trip QwebRegistry —
+        hyperscript reçoit donc TOUJOURS la forme APLATIE. La structure
+        `if/else/end` d'hyperscript ne survit PAS à cet aplatissement
+        (`Unexpected Token : else`), seul un bloc `js(...) end` (JS
+        verbatim, séparé par `;`) le tolère — d'où un seul js block qui
+        fait tout le routing, jamais un if hyperscript."""
+        schema = self._endpoint_schema(ep)
         if not (ep.onsuccess or ep.onerror or ep.receive.target):
             return ""
-        success_actions: list[str] = []
-        error_actions: list[str] = []
+
+        lines = ["on htmx:afterRequest", "  js(event)"]
+        if schema is None:
+            lines.append("    let ok = event.detail.successful;")
+        else:
+            lines.append("    let ok;")
+            lines.append("    try {")
+            lines.append(
+                f"      ok = event.detail.successful && window.XwebValidate("
+                f"{json.dumps(schema.name)}, JSON.parse(event.detail.xhr.responseText || 'null'), "
+                f"{{ list: {json.dumps(ep.receive.list)} }}).valid;"
+            )
+            lines.append("    } catch (e) { ok = false; }")
         if ep.onsuccess:
-            success_actions.append(f"remove @hidden from #{use_id}-onsuccess")
+            lines.append(f"    document.querySelector('#{use_id}-onsuccess').hidden = !ok;")
         if ep.onerror:
-            success_actions.append(f"add @hidden to #{use_id}-onerror")
-            error_actions.append(f"remove @hidden from #{use_id}-onerror")
-        if ep.onsuccess:
-            error_actions.append(f"add @hidden to #{use_id}-onsuccess")
+            lines.append(f"    document.querySelector('#{use_id}-onerror').hidden = ok;")
         if ep.receive.target:
             event_name = ep.receive.event or f"{ep.name}:done"
-            success_actions.append(f"send {event_name} to {ep.receive.target}")
-        if not success_actions and not error_actions:
-            return ""
-        lines = ["on htmx:afterRequest", "  if event.detail.successful"]
-        lines += [f"    {a}" for a in success_actions] or ["    nop"]
-        lines.append("  else")
-        lines += [f"    {a}" for a in error_actions] or ["    nop"]
+            lines.append(
+                f"    if (ok) {{ var t = document.querySelector({json.dumps(ep.receive.target)}); "
+                f"if (t) t.dispatchEvent(new CustomEvent({json.dumps(event_name)})); }}"
+            )
         lines.append("  end")
         return "\n".join(lines)
+
+    def _endpoint_schema(self, ep: EndpointDef) -> DataSchemaDef | None:
+        """L'éventuel `data` référencé par `receive.schema`, LÉVÉ en
+        CompileError si le nom n'a jamais été déclaré (même posture que
+        `use:`/`validate:` d'un channel — un typo doit planter à la
+        compilation, pas produire une validation morte qui laisse tout
+        passer silencieusement)."""
+        if not ep.receive.schema:
+            return None
+        schema = self._data_schemas.get(ep.receive.schema)
+        if schema is None:
+            raise CompileError(
+                f"endpoint {ep.name!r} : receive.schema: {ep.receive.schema!r} "
+                f"référence un schéma `data` jamais déclaré (schémas connus : "
+                f"{sorted(self._data_schemas) or 'aucun'})"
+            )
+        return schema
 
     def _write_endpoint_scaffolding(self, ep: EndpointDef, use_id: str) -> None:
         """Émet, juste après l'élément porteur, les blocs statiques
@@ -644,7 +741,13 @@ class Compiler:
         onerror (cachés par défaut via l'attribut `hidden`, révélés par le
         hyperscript de _endpoint_hyperscript). Contenu STATIQUE, compilé
         une fois pour toutes — pas de liaison aux champs de la réponse
-        JSON dans ce v1 (voir docstring d'EndpointDef.onsuccess)."""
+        JSON dans ce v1 (voir docstring d'EndpointDef.onsuccess).
+
+        Quand `receive.schema` est posé, exporte aussi le descripteur
+        `window.XWEB_SCHEMAS[nom]` (MÊME mécanique que le bootstrap d'un
+        `channel` : colocalisé avec l'élément qui le consomme) — garanti
+        présent AVANT que la validation de _endpoint_hyperscript ne puisse
+        jamais s'exécuter."""
         if ep.onloading:
             self._write(f'<div id="{use_id}-indicator" class="htmx-indicator">')
             self.indent += 1
@@ -666,11 +769,71 @@ class Compiler:
                 self._compile_node(child, self._global_scope)
             self.indent -= 1
             self._write("</div>")
+        schema = self._endpoint_schema(ep)
+        if schema is not None:
+            for dep_name in self._schema_closure(schema.name):
+                self._write(
+                    f'<script>window.XWEB_SCHEMAS = window.XWEB_SCHEMAS || {{}}; '
+                    f'window.XWEB_SCHEMAS[{json.dumps(dep_name)}] = '
+                    f'{json.dumps(_schema_to_json(self._data_schemas[dep_name]))};</script>'
+                )
 
     # -------------------------------------------------------------------------
     # `use_channel: nom` — expansion d'un channel en <script> de bootstrap
     # xweb/static/live_channel.js
     # -------------------------------------------------------------------------
+
+    def _resolve_copy(self, node: Element) -> tuple[list[Attribute], str | None]:
+        """Sépare l'éventuel attribut `copy:` (copie-modification inline,
+        docs/inheritance.md#xpatch) du reste — la cible doit être un nom de
+        template LITTÉRAL entre guillemets (jamais une expression : la
+        copie se résout par nom brut dans le registre, comme patch/use)."""
+        remaining: list[Attribute] = []
+        copy_name: str | None = None
+        for attr in node.attributes:
+            if attr.name == "copy":
+                if attr.dynamic or attr.interpolated or not isinstance(attr.value, str):
+                    raise CompileError(
+                        "copy: attend un nom de template LITTÉRAL entre guillemets "
+                        '(ex. copy: "xweb.shell_head") — la cible de la copie est '
+                        "résolue par nom brut dans le registre, jamais par expression"
+                    )
+                copy_name = attr.value
+                continue
+            remaining.append(attr)
+        return remaining, copy_name
+
+    def _compile_inline_xpath(self, node: Element, scope: dict[str, str]) -> None:
+        """Compile un bloc `xpatch expr: position: { ... }` en <xpath>
+        QWeb — repli exactement sur la mécanique des patches (mêmes
+        expressions, mêmes positions), seule la provenance change (inline
+        au lieu de <template t-inherit>/CopyDef)."""
+        by_name: dict[str, str] = {}
+        for attr in node.attributes:
+            if not isinstance(attr.value, str):
+                continue
+            if attr.dynamic or attr.interpolated:
+                raise CompileError(
+                    f"xpatch: l'attribut {attr.name!r} doit être un littéral "
+                    f"(expr: <xpath> ; position: position), pas une expression"
+                )
+            by_name[attr.name] = attr.value
+
+        expr = by_name.get("expr")
+        if not expr:
+            raise CompileError(
+                "xpatch: expr est obligatoire (chemin XPath ciblé, "
+                "ex. expr: \"//link[@rel='stylesheet']\")"
+            )
+        position_str = by_name.get("position", "inside")
+        try:
+            position = Position(position_str)
+        except ValueError:
+            raise CompileError(
+                f"xpatch: position {position_str!r} inconnue — "
+                f"attendu inside|replace|before|after|attributes"
+            )
+        self._compile_xpath(XpathPatch(expr=expr, position=position, children=node.children), scope)
 
     def _resolve_use_channel(self, attrs: list[Attribute]) -> tuple[list[Attribute], ChannelDef | None]:
         """Sépare un éventuel attribut `use_channel: nom` du reste, résout
@@ -693,6 +856,34 @@ class Compiler:
                 f"(channels connus : {sorted(self._channels) or 'aucun'})"
             )
         return remaining, ch
+
+    def _schema_closure(self, name: str) -> list[str]:
+        """Tous les schémas `data` à EXPORTER pour que *name* soit
+        validable par XwebValidate — *name* et, TRANSITIVEMENT, chaque
+        schéma qu'il référence via un champ composé (`address: address`,
+        `phones: list[phone]`). La pseudo-règle `ref`/`list` du descripteur
+        pointe ces noms : un export qui n'exporte que le schéma racine
+        laisse la descente côté client échouer ("schéma introuvable") —
+        doù la fermeture ici (MÊME trou dans les exports channel et
+        endpoint, corrigé pour les deux)."""
+        ordered: list[str] = []
+
+        def visit(name: str) -> None:
+            if name in ordered:
+                return
+            ordered.append(name)
+            schema = self._data_schemas.get(name)
+            if schema is None:
+                return  # référence jamais déclarée — vérifiée ailleurs (CompileError)
+            for field in schema.fields:
+                kind, item = split_value_type(field.value_type)
+                if kind == "ref":
+                    visit(item)
+                elif kind == "list" and item not in PRIMITIVE_TYPES:
+                    visit(item)
+
+        visit(name)
+        return ordered
 
     def _write_channel_bootstrap(self, ch: ChannelDef) -> None:
         """Émet, juste après l'élément porteur de `use_channel:`, un
@@ -747,7 +938,21 @@ class Compiler:
             # xweb/static/validators.js ne lit jamais un schéma qu'un
             # `channel` n'a pas explicitement importé ici.
             lines.append("  window.XWEB_SCHEMAS = window.XWEB_SCHEMAS || {};")
-            lines.append(f"  window.XWEB_SCHEMAS[{_json.dumps(ch.validate)}] = {_json.dumps(_schema_to_json(schema))};")
+            for dep_name in self._schema_closure(ch.validate):
+                lines.append(
+                    f"  window.XWEB_SCHEMAS[{_json.dumps(dep_name)}] = "
+                    f"{_json.dumps(_schema_to_json(self._data_schemas[dep_name]))};"
+                )
+            # Le JSON Schema du modèle Pydantic (même définition, source de
+            # vérité unique — xdsl/pydantic_bridge.py) voyage en parallèle :
+            # réservé au rendu de champ façon t-field (étage suivant) et à
+            # tout consommateur JSON Schema ; validators.js lui n'a besoin
+            # QUE des listes de règles ci-dessus et ignore ce registre.
+            lines.append("  window.XWEB_SCHEMAS_JSON = window.XWEB_SCHEMAS_JSON || {};")
+            lines.append(
+                f"  window.XWEB_SCHEMAS_JSON[{_json.dumps(ch.validate)}] = "
+                f"{_json.dumps(build_model(schema, self._data_schemas).model_json_schema())};"
+            )
         lines += [
             f"  var _xwebChannelOpts = {_json.dumps(opts)};",
             "  _xwebChannelOpts.onMessage = function (channel, data) {",

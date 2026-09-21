@@ -41,8 +41,8 @@ component site.directives_t_name {
             subtitle: "Le nom qualifié du template — clé du registre, cible d'un t-call ou d'un t-inherit." }
         code_sample { lang: "xml"
             '
-<template t-name="xweb.button">…</template>
-'
+            <template t-name="xweb.button">…</template>
+            '
         }
         p { "Convention : package_id.nom, calquée sur module.template d'Odoo. xweb.button pour un composant du cœur, crm_app.contacts_list pour une page de plugin." }
         gotcha { title: "Un registre global, non namespacé par page"

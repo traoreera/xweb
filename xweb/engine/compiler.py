@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 from markupsafe import Markup, escape
 
 from .filters import apply_filters, split_filters
+from .safe_expr import find_unsafe_node, parse_expr_safe
 
 if TYPE_CHECKING:
     from lxml import etree
@@ -65,12 +66,37 @@ _RAW_TEXT_TAGS = frozenset({"script", "style"})
 
 _DIRECTIVE_ATTRS = frozenset({
     "t-if", "t-elif", "t-else", "t-foreach", "t-as", "t-esc", "t-out", "t-tr",
-    "t-set", "t-value", "t-call", "t-name", "t-inherit", "t-inherit-mode",
+    "t-set", "t-value", "t-call", "t-copy", "t-name", "t-inherit", "t-inherit-mode",
 })
 
 
 class TemplateError(Exception):
     """Raised at render time — bad expression, unknown t-call target, etc."""
+
+
+def _check_expr_safe(expr: str) -> None:
+    """Barrière structurelle devant l'`eval` réel de `_eval`.
+
+    Le modèle de confiance reste « les auteurs de templates sont de
+    confiance » (docs/spec-v1.md principe 2) — mais `eval(expr,
+    {"__builtins__": {}}, ctx)` n'est PAS une sandbox : sans cette garde,
+    `().__class__.__mro__[1].__subclasses__()` serait un escape Python
+    classique (dunder access), même avec les builtins retirés. On coupe
+    donc à la racine, au niveau AST, TOUT accès attribut dont le nom est
+    un dunder (`__class__`, `__globals__`, `__mro__`, ...) et les lambdas
+    — deux formes dont aucun template légitime n'a besoin. Les noms de
+    variables du contexte (y compris en sous-script `x["__x__"]`) restent
+    autorisés : c'est la *propriété* que la donnée porte, pas sa clé.
+    Même échec silencieux qu'avant pour une expression mal formée
+    (TemplateError), jamais de corruption."""
+    tree, err = parse_expr_safe(expr)
+    if err is not None:
+        raise TemplateError(f"expression failed: {expr!r} — {err}")
+    reason = find_unsafe_node(tree)
+    if reason is not None:
+        raise TemplateError(
+            f"expression failed: {expr!r} — {reason} interdit dans une expression de template"
+        )
 
 
 def _eval(expr: str, ctx: dict) -> Any:
@@ -94,8 +120,9 @@ def _eval(expr: str, ctx: dict) -> Any:
     parts = split_filters(expr)
     value_expr = parts[0]
     has_filters = len(parts) > 1 and parts[1].lstrip().startswith("|")
+    _check_expr_safe(value_expr)
     try:
-        base = eval(value_expr, {"__builtins__": {}}, ctx)  # noqa: S307 — template authors are trusted plugin code (docs/spec-v1.md principe 2), not end users
+        base = eval(value_expr, {"__builtins__": {}}, ctx)  # noqa: S307 — template authors are trusted plugin code + _check_expr_safe barre les dunders (docs/spec-v1.md principe 2), not end users
     except NameError:
         # Un nom non défini reste falsy (None), MAIS ne doit pas court-
         # circuiter une chaîne de filtres — sinon "missing | default:'N/A'"
@@ -235,6 +262,10 @@ class Compiler:
             self._render_call(el, ctx, buf)
             return
 
+        if el.get("t-copy") is not None:
+            self._render_copy(el, ctx, buf)
+            return
+
         tag = el.tag
         is_t = tag == "t"  # <t> is logic-only, never emits its own HTML tag
         void = tag in _VOID_ELEMENTS
@@ -364,24 +395,7 @@ class Compiler:
             else:
                 self._render_child_list(item, dict(ctx), slot_buf)
 
-        call_ctx: dict = {}
-        for name, value in el.attrib.items():
-            if name.startswith("t-att-"):
-                call_ctx[name[len("t-att-"):].replace("-", "_")] = _eval(value, ctx)
-            elif name.startswith("t-attf-"):
-                # Même sémantique que t-attf-* sur un élément normal
-                # (interpolation {{...}} d'une chaîne littérale), mais SANS
-                # l'échappement HTML appliqué ensuite pour un attribut réel
-                # (_render_attrs) — une prop de t-call est une valeur Python
-                # brute comme t-att-*, jamais du HTML sérialisé ; l'échappement
-                # reste la responsabilité de la cible à son propre t-esc/t-att-*.
-                # Avant ce correctif, t-attf-* sur un t-call était reconnu par
-                # aucune branche ci-dessous et disparaissait silencieusement,
-                # sans erreur (know/features/t-call-needs-interpolated-prop-syntax.md).
-                if name != "t-attf-slot":  # "slot" reste réservé au contenu, jamais une prop
-                    call_ctx[name[len("t-attf-"):].replace("-", "_")] = _eval_formatted(value, ctx)
-            elif not name.startswith("t-"):
-                call_ctx[name.replace("-", "_")] = value
+        call_ctx = self._call_props(el, ctx)
         call_ctx["slot"] = Markup("".join(slot_buf))
         for slot_name, content in named_slots.items():
             call_ctx[f"slot_{slot_name}"] = content
@@ -390,3 +404,66 @@ class Compiler:
         if target_el is None:
             raise TemplateError(f"t-call: unknown template {target!r}")
         buf.append(self.render(target_el, call_ctx))
+
+    def _call_props(self, el: "etree._Element", ctx: dict) -> dict:
+        """Collection des props d'une inclusion (<t t-call>/<t t-copy>) :
+        t-att-* (expression), t-attf-* (interpolation), attributs bruts —
+        le contexte de la cible est isolé de l'appelant, seules ces props
+        passent (docs/language.md#t-call)."""
+        call_ctx: dict = {}
+        for name, value in el.attrib.items():
+            if name.startswith("t-att-"):
+                call_ctx[name[len("t-att-"):].replace("-", "_")] = _eval(value, ctx)
+            elif name.startswith("t-attf-"):
+                # Même sémantique que t-attf-* sur un élément normal
+                # (interpolation {{...}} d'une chaîne littérale), mais SANS
+                # l'échappement HTML appliqué ensuite pour un attribut réel
+                # (_render_attrs) — une prop d'inclusion est une valeur Python
+                # brute comme t-att-*, jamais du HTML sérialisé ; l'échappement
+                # reste la responsabilité de la cible à son propre t-esc/t-att-*.
+                if name != "t-attf-slot":  # "slot" reste réservé au contenu, jamais une prop
+                    call_ctx[name[len("t-attf-"):].replace("-", "_")] = _eval_formatted(value, ctx)
+            elif not name.startswith("t-"):
+                call_ctx[name.replace("-", "_")] = value
+        return call_ctx
+
+    def _render_copy(self, el: "etree._Element", ctx: dict, buf: list[str]) -> None:
+        """t-copy — copie-modification locale, « à la xpatch » (docs/inheritance.md#xpatch).
+
+        <t t-copy="target"> prend une SNAPSHOT de l'arbre RÉSOLU de *target*
+        (patches extension/primary déjà appliqués — registry.get()), en
+        deep-copy, applique sur la copie seulement les <xpath expr position>
+        écrits DANS ce nœud (même vocabulaire/positions que <template
+        t-inherit>), puis rend la copie. La source n'est jamais modifiée, et
+        rien n'est enregistré globalement : contrairement à t-inherit-mode=
+        "extension" (qui patch l'arbre partagé pour tous les appelants) et à
+        "primary" (duplication au niveau template), t-copy est per-render et
+        scoped à un fragment — deux pages peuvent composer xweb.shell_head
+        différemment sans jamais se rejoindre dans un conflit check_all().
+
+        Seuls des enfants <xpath> sont permis (un autre enfant est une erreur
+        d'auteur, jamais un silence). Les props se passent comme t-call
+        (t-att-*) ; pas de slot (l'endroit d'insertion est déjà décrit par
+        le position des <xpath>)."""
+        target = el.get("t-copy")
+        for child in list(el):
+            tag = child.tag
+            if not isinstance(tag, str) or tag == "xpath":
+                continue  # commentaires/PI ignorés ; <xpath> = ops
+            raise TemplateError(
+                f"t-copy={target!r}: seuls des enfants <xpath> sont permis, "
+                f"trouvé <{tag}> (docs/inheritance.md#xpatch)"
+            )
+        parent = self.registry.get(target)
+        if parent is None:
+            raise TemplateError(f"t-copy: unknown template {target!r}")
+
+        # Import local : inherit.py importe compiler.py (TemplateError) —
+        # une import en tête de module serait un cycle, et au moment où ce
+        # code tourne inherit est de toute façon déjà chargé par le registry.
+        from .inherit import apply_patch_ops, parse_xpath_ops
+
+        label = f"t-copy:{target}"
+        ops = parse_xpath_ops(el, patch_name=label)
+        copy = apply_patch_ops(parent, ops, patch_name=label)
+        buf.append(self.render(copy, self._call_props(el, ctx)))

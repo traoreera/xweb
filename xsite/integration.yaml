@@ -1,0 +1,30 @@
+app:
+  name: "xweb-site"
+  env: "development"
+  secret_key: "site-dev-key"
+  plugin_prefix: "/app"
+
+plugins:
+  # ./xsite/plugins : le dossier physique reste "xsite" (Python a un module
+  # stdlib nommé "site" — un paquet local du même nom entre en collision à
+  # l'import, "No module named 'site.backend'; 'site' is not a package").
+  # Le NAMESPACE QWeb ci-dessous ("site") est un nom de t-name (site.home,
+  # site.code_sample...), sans rapport avec les modules Python — il reste
+  # "site" par choix, jamais concerné par cette collision.
+  directory: "./xsite/plugins"
+  strict_trusted: false
+
+services:
+  extensions:
+    xweb:
+      module: xweb.engine.integration.xcore:XwebExtension
+      config:
+        # xweb/components/ (le catalogue xweb.*) est chargé automatiquement
+        # par XwebExtension.init() — aucune config requise pour ça.
+        # `site` est le SEUL namespace propre à ce projet : ses .dsl sont
+        # détectés par contenu (QwebRegistry.register_dir scanne *.xml ET
+        # *.dsl) et transpilés avant enregistrement.
+        namespaces:
+          site: "xsite/templates"
+        locales_dir: "xsite/locales"
+        locales: []

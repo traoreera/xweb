@@ -681,3 +681,157 @@ def test_underscore_explicit_context_still_takes_priority_over_default():
     r.register_source('<template t-name="test.f"><t t-esc="_(\'Bonjour\')"/></template>')
     html = r.render("test.f", {"_": lambda s: s.upper()})
     assert html.strip() == "BONJOUR"
+
+
+# ---------------------------------------------------------------------
+# t-copy — copie-modification locale « à la xpatch » (docs/inheritance.md
+# #xpatch). <t t-copy="target"> prend une SNAPSHOT de l'arbre RÉSOLU de
+# target (patches déjà appliquées), applique ses <xpath> sur la copie,
+# rend la copie — la source n'est jamais modifiée, rien n'est enregistré
+# globalement (contrairement à t-inherit-mode="extension").
+# ---------------------------------------------------------------------
+
+
+def test_t_copy_inserts_after_and_leaves_source_intact(registry):
+    r = QwebRegistry()
+    r.register_dir(COMPONENTS_DIR)
+    r.register_source(
+        '<template t-name="test.assets">'
+        '<link rel="stylesheet" href="/core.css"/>'
+        "</template>"
+    )
+    r.register_source(
+        """<template t-name="test.page">
+            <head>
+                <t t-copy="test.assets">
+                    <xpath expr="//link[@rel='stylesheet']" position="after">
+                        <link rel="stylesheet" href="/site.css"/>
+                    </xpath>
+                </t>
+            </head>
+        </template>"""
+    )
+    html = r.render("test.page", {})
+    assert "/core.css" in html and "/site.css" in html
+    # la source n'a PAS reçu le link de la copie (c'est une snapshot,
+    # pas un patch global)
+    assert "/site.css" not in r.render("test.assets", {})
+
+
+def test_t_copy_snapshot_contains_extension_patches_of_the_source(registry):
+    """La copie se fait sur l'arbre DÉJÀ résolu — une patch extension sur
+    la source est visible dans la copie, puis la copie personnalise PAR-
+    DESSUS (after le dernier link) sans rétroagir sur la source."""
+    r = QwebRegistry()
+    r.register_dir(COMPONENTS_DIR)
+    r.register_source(
+        """<template t-name="test.core">
+            <link rel="stylesheet" href="/core.css"/>
+        </template>"""
+    )
+    r.register_source(
+        """<template t-name="patch.core" t-inherit="test.core" priority="1">
+            <xpath expr="//link[@rel='stylesheet']" position="after">
+                <link rel="stylesheet" href="/patched.css"/>
+            </xpath>
+        </template>"""
+    )
+    assert "/patched.css" in r.render("test.core", {})
+    r.register_source(
+        """<template t-name="test.page">
+            <t t-copy="test.core">
+                <xpath expr="//link[2]" position="after">
+                    <link rel="stylesheet" href="/page.css"/>
+                </xpath>
+            </t>
+        </template>"""
+    )
+    r.check_all()
+    html = r.render("test.page", {})
+    # l'ordre de la snapshot : core-css, puis le patched-css de la patch,
+    # puis le page-css de la copie
+    assert html.index("/core.css") < html.index("/patched.css") < html.index("/page.css")
+    # et la source elle-même n'a jamais reçu page.css
+    assert "/page.css" not in r.render("test.core", {})
+
+
+def test_t_copy_passes_props_like_t_call(registry):
+    """t-copy reçoit ses props comme t-call (t-att-*, attributs bruts) et
+    les résout dans la copie — pas de fuite du contexte appelant."""
+    r = QwebRegistry()
+    r.register_source(
+        """<template t-name="test.meta">
+            <t t-set="name" t-default="''"/>
+            <meta t-att-name="name or None" charset="utf-8"/>
+        </template>"""
+    )
+    r.register_source(
+        """<template t-name="test.page">
+            <t t-copy="test.meta" t-att-name="'frag-1'"/>
+        </template>"""
+    )
+    html = r.render("test.page", {})
+    assert 'name="frag-1"' in html
+
+
+def test_t_copy_attributes_position_operates_on_the_copy_not_the_source(registry):
+    r = QwebRegistry()
+    r.register_source(
+        """<template t-name="test.link">
+            <link rel="stylesheet" href="/core.css"/>
+        </template>"""
+    )
+    r.register_source(
+        """<template t-name="test.page">
+            <div>
+                <t t-copy="test.link">
+                    <xpath expr="//link[@rel='stylesheet']" position="attributes">
+                        <attribute name="data-tracked">true</attribute>
+                    </xpath>
+                </t>
+            </div>
+        </template>"""
+    )
+    html = r.render("test.page", {})
+    assert 'data-tracked="true"' in html
+    assert "data-tracked" not in r.render("test.link", {})
+
+
+def test_t_copy_unknown_target_raises():
+    r = QwebRegistry()
+    r.register_source('<template t-name="test.page"><t t-copy="nope.missing"/></template>')
+    with pytest.raises(TemplateError, match="t-copy: unknown template 'nope.missing'"):
+        r.render("test.page", {})
+
+
+def test_t_copy_rejects_non_xpath_children():
+    """Un enfant non-<xpath> est une erreur d'auteur — jamais silencieux
+    (le contenu ne peut pas « se perdre » comme avant le correctif des
+    copies littérales)."""
+    r = QwebRegistry()
+    r.register_source(
+        """<template t-name="test.base"><meta charset="utf-8"/></template>"""
+    )
+    r.register_source(
+        """<template t-name="test.page">
+            <t t-copy="test.base"><span>perdu silencieusement avant</span></t>
+        </template>"""
+    )
+    with pytest.raises(TemplateError, match="seuls des enfants <xpath> sont permis"):
+        r.render("test.page", {})
+
+
+def test_t_copy_rejects_xpath_without_expr_or_position():
+    r = QwebRegistry()
+    r.register_source(
+        """<template t-name="test.base"><meta charset="utf-8"/></template>"""
+    )
+    r.register_source(
+        """<template t-name="test.page">
+            <t t-copy="test.base">
+                <xpath position="after"><link rel="stylesheet" href="/x.css"/></xpath>
+            </t>
+        </template>"""
+    )
+    with pytest.raises(TemplateError, match="<xpath> requires expr and position"):
+        r.render("test.page", {})

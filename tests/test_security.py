@@ -23,23 +23,24 @@ def make_app(**middleware_kwargs) -> FastAPI:
     return app
 
 
-def test_default_is_report_only():
+def test_default_is_enforce():
     r = TestClient(make_app()).get("/x")
-    assert "Content-Security-Policy-Report-Only" in r.headers
-    assert "Content-Security-Policy" not in r.headers
+    assert "Content-Security-Policy" in r.headers
+    assert "Content-Security-Policy-Report-Only" not in r.headers
     assert r.headers["X-Frame-Options"] == "DENY"
     assert r.headers["X-Content-Type-Options"] == "nosniff"
     assert r.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
 
 
-def test_report_only_false_uses_enforcing_header():
-    r = TestClient(make_app(report_only=False)).get("/x")
-    assert "Content-Security-Policy" in r.headers
-    assert "Content-Security-Policy-Report-Only" not in r.headers
+def test_report_only_true_uses_report_only_header():
+    r = TestClient(make_app(report_only=True)).get("/x")
+    assert "Content-Security-Policy-Report-Only" in r.headers
+    assert "Content-Security-Policy" not in r.headers
 
 
 def test_excluded_path_gets_no_security_headers():
     r = TestClient(make_app(exclude_paths=["/x"])).get("/x")
+    assert "Content-Security-Policy" not in r.headers
     assert "Content-Security-Policy-Report-Only" not in r.headers
     assert "X-Frame-Options" not in r.headers
 

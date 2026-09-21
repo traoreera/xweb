@@ -56,6 +56,27 @@ class Patch:
     mode: str = "extension"  # "extension" (live-patches inherit's shared tree) or "primary" (duplicates it under t_name)
 
 
+def parse_xpath_ops(root: etree._Element, *, patch_name: str) -> list[XPathOp]:
+    """Parse les <xpath expr position> enfants DIRECTS de *root* en ops —
+    le vocabulaire commun à <template t-inherit> (extract_patch) ET à la
+    directive de rendu <t t-copy> (xweb/engine/compiler.py::_render_copy),
+    pour que les deux restent la même mécanique (docs/inheritance.md#xpatch)."""
+    ops: list[XPathOp] = []
+    for xp in root.findall("xpath"):
+        expr, position = xp.get("expr"), xp.get("position")
+        if not expr or not position:
+            raise TemplateError(f"{patch_name}: <xpath> requires expr and position")
+        if position not in _XPATH_POSITIONS:
+            raise TemplateError(f"{patch_name}: unknown xpath position {position!r}")
+
+        if position == "attributes":
+            attrs = {a.get("name"): (a.text or "") for a in xp.findall("attribute")}
+            ops.append(XPathOp(expr=expr, position=position, attributes=attrs))
+        else:
+            ops.append(XPathOp(expr=expr, position=position, nodes=list(xp)))
+    return ops
+
+
 def extract_patch(template_el: etree._Element, *, source_plugin: str = "") -> Patch | None:
     """Returns a Patch if *template_el* has t-inherit, None for a plain
     (base) template — the caller (QwebRegistry) uses that to decide
@@ -72,26 +93,13 @@ def extract_patch(template_el: etree._Element, *, source_plugin: str = "") -> Pa
         )
 
     priority = int(template_el.get("priority", "0"))
-    ops: list[XPathOp] = []
-    for xp in template_el.findall("xpath"):
-        expr, position = xp.get("expr"), xp.get("position")
-        if not expr or not position:
-            raise TemplateError(f"{template_el.get('t-name')}: <xpath> requires expr and position")
-        if position not in _XPATH_POSITIONS:
-            raise TemplateError(f"{template_el.get('t-name')}: unknown xpath position {position!r}")
-
-        if position == "attributes":
-            attrs = {a.get("name"): (a.text or "") for a in xp.findall("attribute")}
-            ops.append(XPathOp(expr=expr, position=position, attributes=attrs))
-        else:
-            ops.append(XPathOp(expr=expr, position=position, nodes=list(xp)))
-
+    patch_name = template_el.get("t-name", "<anonymous>")
     return Patch(
-        t_name=template_el.get("t-name", "<anonymous>"),
+        t_name=patch_name,
         inherit=inherit,
         priority=priority,
         source_plugin=source_plugin,
-        xpath_ops=ops,
+        xpath_ops=parse_xpath_ops(template_el, patch_name=patch_name),
         mode=mode,
     )
 

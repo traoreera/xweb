@@ -506,9 +506,20 @@ def _split_top_commas(text: str) -> list[str]:
     return out
 
 
+from .safe_expr import find_unsafe_node, parse_expr_safe
+
+
 def _safe_literal(part: str) -> Any:
     """Évalue un littéral Python simple (str/nombre/bool/None) depuis un
-    template de confiance — borné par l'absence de builtins."""
+    template de confiance — borné par l'absence de builtins + garde dunders.
+
+    Un accès dunder (même __class__) ou une lambda dans l'argument n'est
+    pas exécuté : l'expression est renvoyée telle quelle comme texte
+    littéral (même philosophie défensive que le reste des filtres :
+    jamais de crash)."""
+    tree, err = parse_expr_safe(part)
+    if err is not None or find_unsafe_node(tree, strict=True) is not None:
+        return part
     try:
         return eval(part, {"__builtins__": {}}, {})  # noqa: S307 — littéral d'un template de confiance, sans builtins
     except Exception:

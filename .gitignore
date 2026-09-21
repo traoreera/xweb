@@ -16,4 +16,5 @@ dist/
 .verify-editable-table.html
 .verify-channel-dsl.html
 .verify-channel-dispatch.html
+.verify-endpoint-dsl.html
 .verify-validators.json

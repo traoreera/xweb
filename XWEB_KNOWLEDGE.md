@@ -130,6 +130,7 @@ XML, `t-*`, parsé via `lxml.etree`.
 - `position` : `before`/`after`/`inside`/`replace`/`attributes`.
 - Plusieurs patches sur la même cible se résolvent par `priority` (int, défaut 0, le plus bas d'abord), puis ordre d'enregistrement — **jamais** l'ordre d'import.
 - Conflit réel : deux patches, même `expr`, `position="replace"` — le moins prioritaire est abandonné pour ce nœud, warning nommant les deux plugins. Opérations non conflictuelles sur le même nœud (`inside`+`inside`, `inside`+`attributes`) s'appliquent toutes les deux.
+- **`t-copy`** — copie-modification **par rendu** (docs `docs/inheritance.md#xpatch`) : `<t t-copy="target">` prend une snapshot de l'arbre **déjà résolu** de la cible (`registry.get`, patches `extension`/`primary` comprises), applique ses propres enfants `<xpath expr position>` sur la **copie seulement** (`inherit.apply_patch_ops`, mêmes positions/vocabulaire — `parse_xpath_ops` est partagé avec `extract_patch`), rend la copie. La source n'est jamais modifiée, **rien n'est enregistré globalement** → deux pages peuvent composer un même template partagé différemment sans jamais créer de conflit `check_all()`. Props comme `t-call` (`t-att-*`/bruts, isolés), **pas de slot** ; enfant non-`<xpath>` → `TemplateError` (jamais de contenu perdu), cible inconnue → `TemplateError`. Testé dans `tests/test_compiler.py`.
 
 ---
 
@@ -321,14 +322,17 @@ data contact_form {
 }
 ```
 
-`@décorateur[(args)]` = une règle de `xdsl/validators.py::BUILTIN_VALIDATORS` (`required`, `min_length`, `max_length`, `min`, `max`, `email`, `pattern`, `in`) — champ sans `@required` = optionnel (`Required` est une règle comme une autre, pas un flag séparé). `data` n'émet **aucun XML** — c'est un schéma consommé côté **serveur** :
+`@décorateur[(args)]` = une règle de `xdsl/validators.py::BUILTIN_VALIDATORS` (`required`, `min_length`, `max_length`, `min`, `max`, `email`, `pattern`, `in`) — champ sans `@required` = optionnel (`Required` est une règle comme une autre, pas un flag séparé). `data` n'émet **aucun XML** — c'est un schéma consommé côté **serveur**. **Chemin canonique depuis la décision « pas d'ORM → Pydantic source de vérité »** : `xdsl/pydantic_bridge.py::build_model()` compile le bloc `data` en VRAI `BaseModel` (`extract_models`), chaque `@décorateur` attaché comme `AfterValidator` réutilisant la MÊME classe Validator (jamais de contraintes Pydantic natives ré-implantées — pydantic ancrerait `pattern` en full-match vs préfixe du moteur, `ge` refuserait les non-nombres quand `MinValue` passe au travers), le `value_type` devient une annotation réellement APPLIQUÉE (l'ancien chemin ne typait jamais : `age: int @min(0)` + `"abc"` passait par un passthrough silencieux), `@required` → champ requis au modèle, message "missing" → « Ce champ est obligatoire », erreurs de type → « Type invalide — attendu : <type> ». `validate_model(model, payload)` est le drop-in de `validate_dict` (`{champ: [messages]}`, mêmes règles/messages français — les messages de règles multiples d'un champ sont agrégés en une entrée) ; `parse_form(form, models["nom"])` fonctionne tel quel. `extract_schemas`/`validate_dict` restent (vecteurs du miroir JS `validators.js`), toute nouvelle validation par `extract_models`. `channel { validate: ... }` exporte **aussi** `window.XWEB_SCHEMAS_JSON[nom]` = `model_json_schema()` du même modèle (à côté des listes de règles `XWEB_SCHEMAS`), réservé au futur rendu champ façon `t-field`/tout consommateur JSON Schema.
 
 ```python
-from xdsl.api import extract_schemas
-from xdsl.validators import validate_dict
-schemas = extract_schemas(dsl_source)
-errors = validate_dict(payload, schemas["contact_form"])  # {} si valide
+from xdsl.api import extract_models, validate_model
+models = extract_models(dsl_source)
+contact = models["contact_form"].model_validate(payload)  # objet typé, prêt à persister
+errors = validate_model(models["contact_form"], payload)  # {} si valide, drop-in validate_dict
 ```
+
+**Composition et listes typées** (mêmes règles partout, client et serveur) : le `value_type` d'un champ accepte une RÉFÉRENCE à un autre `data` (`address: address` — objet imbriqué) ou `list[item]` (`phones: list[phone]`, `tags: list[string]` — item primitif OU référence). `split_value_type(value_type)` dans `xdsl/parser.py` est la classification unique partagée par tous les étages : `("primitive", type)` / `("ref", nom)` / `("list", item)` (`"list[primitif]"` et `"list[référence]"` portent exactement la même forme `list[...]` — c'est le split qui distingue). `extract_models` construit la MAP COMPLÈTE via `_ModelBuilder` récursif dans `pydantic_bridge` (mémoïsation ; **références circulaires refusées au build**, pas en RecursionError de validation — `data a { x: b }`/`data b { y: a }` → erreur « Référence circulaire entre schémas data : a -> b -> a »). Erreurs de sous-objet remontées au chemin doté (`address.city`), erreurs de liste à `phones.0.number` — le côté JS utilise `phones[0].number`, MÊME chemin, deux conventions d'index (arrondi dans `verify-validators.mjs::pyToJsKey`). Un composé n'a PAS de schéma plat : `extract_schemas`/`validate_dict` lèvent une ValueError explicite qui renvoie vers `extract_models`.
+**Validation de RÉPONSE** (`api.validate_response(models, nom, payload, as_list=True)`) : `validate_model_list` valide un TABLEAU d'objets (`receive { list: true }`) — payload non-liste → `{"__root__": ["Doit être une liste valide."]}`, chaque item validé en `validate_model`, erreurs préfixées `0.name`. Bug de la 1re passe fige : `list[primitif]` doit être annoté `list[TYPE_MAP[item]]`, pas `TYPE_MAP[item]` (sinon `5` dans `list[int]` passe sans erreur de type).
 
 **Piège réel, à ne pas refaire** : `data`/`@decorateurs` ne génère **aucun** attribut HTML5 natif (`required`, `type="email"`...) sur les `<input>` correspondants — v1, documenté, l'auteur DSL les écrit toujours à la main (voir `contacts_demo.dsl`). Sans route Python qui appelle `extract_schemas`/`validate_dict` explicitement, **rien ne valide nulle part**, ni client ni serveur — `data` est un outil DRY, pas un mécanisme d'application forcée.
 
@@ -349,14 +353,17 @@ form { use: create_contact
 }
 ```
 
-**Décision d'architecture centrale** : QWeb n'a **aucun runtime navigateur** (`xweb/engine/` est server-only) — `receive`/`use:` ne rend **jamais** de JSON en HTML côté client, ça reviendrait à réécrire le moteur de rendu en JS. `receive.target`/`event` diffuse un événement au succès (`send {event} to {target}`) ; c'est à l'élément CIBLE de s'auto-rafraîchir depuis le **serveur** via un vrai `hx-trigger="{event} from:body"` — même idiome que `calendar:select`→`xweb.datepicker`. `onloading`/`onsuccess`/`onerror` sont du contenu DSL **statique**, précompilé une fois pour toutes (pas de liaison aux champs de la réponse JSON — `toast { "Créé !" }` fixe, jamais un gabarit rempli à l'exécution).
+**Décision d'architecture centrale** : QWeb n'a **aucun runtime navigateur** (`xweb/engine/` est server-only) — `receive`/`use:` ne rend **jamais** de JSON en HTML côté client, ça reviendrait à réécrire le moteur de rendu en JS. `receive.target`/`event` diffuse, au succès, un **CustomEvent DOM** (`document.querySelector(target).dispatchEvent(new CustomEvent(event_name))`) — c'est à l'élément CIBLE de s'auto-rafraîchir depuis le **serveur** via un vrai `hx-trigger="{event} from:body"` (même idiome que `calendar:select`→`xweb.datepicker`). (Attendu : les toutes premières versions compilaient `send {event} to {target}` en hyperscript ; remplacé par le dispatch CustomEvent dans le bloc js, `event` par défaut `{nom}:done`.) `onloading`/`onsuccess`/`onerror` sont du contenu DSL **statique**, précompilé une fois pour toutes (pas de liaison aux champs de la réponse JSON — `toast { "Créé !" }` fixe, jamais un gabarit rempli à l'exécution).
 
 `use: nom` expanse, à la compilation (`Compiler._endpoint_attrs`/`_endpoint_hyperscript`/`_write_endpoint_scaffolding`), sur l'élément porteur (`form`/`button`, brut ou `t-call` vers `xweb.form`/`xweb.button` — ces deux-là ont dû apprendre à forwarder `hx_headers`/`hx_indicator` en plus de leur whitelist `hx_get`/`hx_post`/... déjà là) :
 - `hx-{method}="{url}"`, `hx-headers` (JSON du dict `headers`), `hx-indicator="#{id}-indicator"` si `onloading` non vide.
 - **`hx-swap="none"` automatique dès que `receive.kind == "json"`** — sans lui, htmx applique son défaut (remplacer l'innerHTML de l'élément DÉCLENCHEUR par le corps brut de la réponse), le texte JSON écraserait le formulaire lui-même. Bug réel trouvé en construisant une vraie démo, corrigé, testé.
 - Un `_hyperscript` `on htmx:afterRequest` qui bascule la visibilité (`@hidden`) des blocs onsuccess/onerror précompilés (des `<div hidden="hidden">` siblings, id `{use_id}-onsuccess`/`-onerror`, `{ep.name}-{compteur}` — un compteur par usage, deux éléments peuvent réutiliser le même endpoint sans collision d'id).
+- **`receive.schema` est CÂBLÉ (plus « documenté seulement »)** : au succès HTTP, la réponse JSON est validée via `window.XwebValidate(schema_name, JSON.parse(...), { list: true/false })` — une réponse structurée invalide passe par le chemin **onerror** (jamais onsuccess ni l'event de refresh), un corps non-JSON est traité comme invalide, jamais une exception ; `receive.list: true` = la réponse attendue est un TABLEAU. Ce CALLBACK ne remplace pas la validation serveur (le serveur reste la source de vérité, `validate_response`), c'est de l'UX (afficher l'erreur au client sans re-rendu). Le descripteur est exporté par le scaffolding : `<script>window.XWEB_SCHEMAS[nom] = …</script>` + la **FERMETURE TRANSITIVE** des `ref`/`list[ref]` (`_schema_closure`) — trouvé en vrai jsdom : un tableau valide dont `contact.address` pointe `address` échouait avec « schéma address absent » quand on n'exportait que le schéma racine ; même correction sur le bootstrap d'un `channel { validate: }` composé (fonction partagée). `receive.schema: nom_inconnu` → `CompileError` à la compilation (jamais une validation morte qui laisse tout passer).
 - CSRF : sur un `<form>` brut + méthode mutante, injecte `<t t-call="xweb.csrf" t-att-token="csrf_token"/>` en premier enfant ; sur un `t-call="xweb.form"`, transmet plutôt la prop `token="csrf_token"` (xweb.form pose déjà son propre champ en interne — jamais les deux à la fois).
 - `use: nom_inconnu` lève `xdsl.compiler.CompileError` à la compilation — jamais un élément inerte silencieux.
+
+**Piège MAJEUR du hyperscript généré (découvert en jsdom, d'où la forme `js(event)`)**: le script est écrit multi-ligne pour la lisibilité du XML compilé, MAIS lxml normalise les `\n` des attributs XML en **espaces** au round-trip QwebRegistry — hyperscript reçoit TOUJOURS la forme APLATIE. La structure `if/else/end` d'hyperscript ne survit PAS à cet aplatissement (`Unexpected Token : else` — vérifié au vrai `_hyperscript.min.js`), seul un bloc `js(...) end` (JS verbatim, statements séparés par `;`) le tolère. `_endpoint_hyperscript` est donc **un seul js block** qui fait tout le routing (try/catch du `JSON.parse`, `XwebValidate`, bascule `hidden`, dispatch conditionnel) — jamais un if hyperscript, et `verify:endpoint-dsl` teste la forme RÉELLE aplatie (via `render_endpoint_fixture.py` + le vrai htmx/_hyperscript/validators.js en jsdom, événement `htmx:afterRequest` dispatché à la main), pas une copie propre. Un endpoint sans onsuccess/onerror/receive.target n'émet aucun `_` (rien à révéler ni diffuser).
 
 **Piège réel, `headers: { "Content-Type": "application/json" }` ne fait PAS ce qu'on croit** : ça pose l'en-tête HTTP, ça ne change **pas** la sérialisation du corps — htmx encode toujours un `<form>` en `application/x-www-form-urlencoded` par défaut, quel que soit le Content-Type déclaré. Sans l'extension htmx `json-enc` (non vendorisée dans ce projet), une route qui appelle `request.json()` échoue silencieusement sur des octets form-encodés étiquetés JSON. `contacts_demo_app.py::create_contact` lit donc de vraies données de formulaire (`Form(...)`), pas un corps JSON — et `contacts_demo.dsl` omet délibérément ce header.
 
@@ -369,6 +376,23 @@ Les tests xdsl historiques ne comparaient que du **texte compilé**, jamais un v
 3. **`xpath { attributes: { clé: "valeur" } }` générait `<a clé="valeur"/>`** — le moteur attend exclusivement `<attribute name="clé">valeur</attribute>` (`extract_patch` fait `xp.findall("attribute")`, un `<a .../>` lui est invisible). Encore un enregistrement sans erreur, sans le moindre effet. Corrigé ; la syntaxe DSL réelle est `attributes: a { clé: "valeur" }` (un élément dont chaque attribut devient un `<attribute>`) — le dict littéral `attributes: { clé: "valeur" }` documenté dans une version antérieure de `docs/dsl-design.md` **n'a jamais été implémenté**.
 
 Une fois enregistrée, une copie est un template comme un autre — `patch` peut la cibler par son nom, sans distinction avec un template de base (`xdsl/tests/test_compiler.py::TestCopyEndToEnd`, vérifié bout en bout).
+
+### `copy:` / `xpatch` — copie-modification INLINE (par rendu, pas enregistrée)
+
+Une deuxième syntaxe, plus locale que `copy X as Y { xpath }` (qui enregistre un template `primary` global) : l'attribut **`copy: "target"`** posé sur un élément (le même token réservé `copy` doublant en nom d'attribut, comme `style:` — `TokenKind.COPY` accepté dans `_peek_is_attribute`/`_parse_attribute`, hors chemin mot-clé de `_parse_node`) + des blocs **`xpatch { expr: …; position: …; … }`** en enfants :
+
+```dsl
+component expeditions.page_head {
+    head {
+        copy: "xweb.shell_head"
+        xpatch { expr: "//link[@rel='stylesheet']"; position: "after"
+            link { rel: "stylesheet"; href: "/expeditions/site.css" }
+        }
+    }
+}
+```
+
+Compile en `<head t-copy="xweb.shell_head"><xpath expr="…" position="after">…</xpath></head>`, rendu par `xweb/engine/compiler.py::_render_copy` — **snapshot de l'arbre résolu** de la cible, ops appliquées sur la copie seule, source intacte, rien enregistré globalement (deux pages peuvent composer `xweb.shell_head` différemment sans conflit `check_all()`, contrairement à un `patch ext`). Contraintes refusées à la compilation (CompileError, jamais silencieux) : cible non-littérale (pas d'expression — résolu par nom brut), enfant non-`xpatch`, `position:` inconnue, `expr:` manquante, `copy:` sur un élément void (pas de corps pour les ops). Tests : `xdsl/tests/test_compiler.py::TestInlineCopy` (texte compilé) + `TestInlineCopyEndToEnd` (vrai `QwebRegistry.render()`). **Piège parseur : l'accolade du corps doit COLLER au tag** (`xpatch { expr: … ; position: … }`) — la grammaire du DSL ne supporte pas d'accolade après les attributs (`xpatch expr: "…" position: "after" {` est une `ParseError` "Nœud inattendu: LBRACE").
 
 ### `channel`/`use_channel:` — bootstrap SSE/WS déclaratif, données live
 
@@ -419,6 +443,31 @@ Différent de `xdsl` : c'est un raccourci XML **natif au moteur QWeb** (`xweb/en
 Les bugs `copy`/`t-name` ci-dessus n'ont été trouvés qu'en poussant un test au-delà de "le texte compilé contient la bonne sous-chaîne" jusqu'à "`QwebRegistry.register_source()` + `render()` réels" — même principe que §13, appliqué à xdsl lui-même. `xdsl/tests/test_compiler.py::TestCopyEndToEnd`/`TestDslToEngineEndToEnd` existent précisément pour ce palier. Pour tout ce qui touche `_`/hyperscript généré par xdsl (`use:`, `endpoint`), le palier 5 de §13 (jsdom + vrai `htmx.min.js`/`_hyperscript.min.js` contre un vrai serveur) reste le seul qui aurait attrapé le bug `hx-target` hérité — un test texte-seul sur le XML compilé ne peut structurellement pas le voir.
 
 Palier supplémentaire pour du JS **dupliqué** entre deux langages (`xdsl/validators.py` ↔ `xweb/static/validators.js`, même règles réimplémentées à la main de chaque côté) : ni la lecture croisée ni un test unitaire par langage ne prouvent la parité — les deux peuvent diverger silencieusement sur un cas limite (troncature, coercition de type, message d'erreur). Le seul test qui le prouve fait tourner le moteur **source de vérité** (Python) sur un jeu de vecteurs, écrit les résultats en JSON, puis rejoue le **même** JSON contre le port (JS) et compare — `scripts/validators_fixture.py` + `scripts/verify-validators.mjs`. À refaire pour toute future logique dupliquée serveur/client de ce genre.
+
+### `xsite/` — le site de présentation xweb+xdsl, TOUT écrit en xdsl, boot xcore RÉEL
+
+`xsite/` (jamais `site/` — collision réelle avec le module **stdlib** Python `site`, confirmée à l'exécution : `uvicorn site.backend.main:app` échoue avec `No module named 'site.backend'; 'site' is not a package`, le stdlib gagne toujours la résolution) :
+
+```
+xsite/
+├── integration.yaml   # xcore.boot() réel — services.extensions.xweb (module: XwebExtension), namespaces: {site: xsite/templates}
+├── templates/*.dsl    # TOUTE la mise en page en xdsl — aucune chaîne HTML construite en Python
+├── static/{site.css,site.js}   # le peu de CSS/JS propre au site, écrit à la main (0 dépendance, 0 CDN)
+├── plugins/            # vide — ce site n'a besoin d'aucun plugin, ses pages sont montées directement sur `app`
+└── backend/{main.py,routes.py,catalog.py}   # boot + routes + extraction du catalogue de composants
+```
+
+`xsite/backend/main.py` fait un **vrai** `Xcore(config_path=...).boot(app)` (pas un `QwebRegistry()` nu comme `contacts_demo_app.py`/`docs_site_app.py`, racine du dépôt, sessions précédentes) — `xcore.services.get("ext.xweb").engine` sert toutes les pages. Aucune base de données requise pour booter (confirmé : `services.databases` absent de `xsite/integration.yaml`, boot silencieux). `bind_hot_reload` câblé après boot, comme documenté dans CLAUDE.md.
+
+**Le CSS/JS du site est injecté par un `patch` xdsl sur `xweb.shell_head`** (`xsite/templates/shell_patch.dsl`), jamais en éditant le composant vendorisé — la démonstration la plus directe de la raison d'être de xweb, appliquée au site qui la documente. `xweb.shell_head` n'a pas d'élément `<head>` englobant (ses enfants SONT le head, insérés par `xweb.shell`) : le xpath cible un nœud qui existe réellement (`//link[@rel='stylesheet']`) et insère `after:`, pas un `//head` qui ne matcherait rien.
+
+**Chaque page de texte (syntaxe/directives/guides) est composée en xdsl** via des composants maison importés comme n'importe quel composant `xweb.*` (`import { doc_header, code_sample, gotcha } from "site"` — `site` est ici un nom de **namespace QWeb** dans `namespaces:`, sans aucun rapport avec le nom du dossier Python `xsite/` ni avec la collision stdlib). Seule la section **Composants** a son contenu construit côté Python (`xsite/backend/catalog.py`) — et ce n'est que des DONNÉES (docstring/props/rendu déjà fait/extraits de code), jamais du HTML : c'est `xsite/templates/components.dsl` qui en fait la mise en page, avec de vrais `xweb.table`/`xweb.badge`/`xweb.collapse`/`xweb.breadcrumbs`.
+
+**Chaque composant a trois usages générés**, pas deux : xdsl, `t-call` QWeb, ET le raccourci `<xweb:nom>` — les trois produisent le même XML compilé (`xweb/engine/parser.py` désucre le raccourci au parse, avant que compilateur/registre/héritage ne voient quoi que ce soit).
+
+**Vrai bug du COMPILATEUR xdsl trouvé en écrivant `xsite/templates/syntax.dsl`** (`xdsl/compiler.py`, la branche `_build_component_attrs` qui émet `t-att-{attr.name}="'...'"` pour une prop littérale de `t-call`) : c'était le **seul** chemin d'émission d'attribut de tout le compilateur qui n'appelait jamais `_esc()`. `card { title: "un <template> ici" }` produisait `t-att-title="'un <template> ici'"` — un `<` non échappé dans une valeur d'attribut XML, **XML invalide**. L'erreur ne se voyait qu'à l'**enregistrement** (`lxml.etree.XMLSyntaxError: Unescaped '<' not allowed in attributes values`), avec un numéro de ligne pointant le XML **compilé**, pas le `.dsl` source — un vrai piège à diagnostiquer sans le bon réflexe (tester au-delà de la compilation, jusqu'au vrai `QwebRegistry`, même discipline que les bugs `copy`/`t-name` plus haut). Corrigé par une nouvelle fonction `_esc_expr()` (échappe `&`/`<`/`>`/`"` mais PAS `'`, qui délimite le littéral Python lui-même — les échapper aussi aurait marché mais rendu toute la sortie compilée illisible). Testé dans `xdsl/tests/test_compiler.py::TestCallPropEscaping`, avec un test au palier `QwebRegistry.register_source()`+`render()` réel, pas seulement texte compilé.
+
+Vérifié bout-en-bout contre un vrai serveur (`uv run uvicorn xsite.backend.main:app`) : 12+ routes à 200, patch `shell_head` actif (CSS/JS du site bien injectés), nav réelle à 6 sections, démo `xweb.popover` avec son vrai hyperscript (`then halt the event`), flux SSE `/demo/sse` qui pousse un vrai tick par seconde consommé par `channel site_clock` (`bind`/`dispatch` xdsl), compteur `/demo/counter` qui incrémente pour de vrai côté serveur à chaque POST htmx, contrat `HX-Request` respecté.
 
 ---
 

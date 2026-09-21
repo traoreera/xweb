@@ -1848,7 +1848,8 @@ class TestChannelEndToEnd:
             }
             form { use: save_contact }
         """)
-        assert "send save_contact:done to #contact-table" in xml
+        assert 'document.querySelector(&quot;#contact-table&quot;)' in xml
+        assert 'new CustomEvent(&quot;save_contact:done&quot;)' in xml
 
     def test_receive_target_without_explicit_event_defaults_to_endpoint_name_done(self):
         xml = _compile_one("""
@@ -1858,7 +1859,7 @@ class TestChannelEndToEnd:
             }
             form { use: save_contact }
         """)
-        assert "send save_contact:done to #contact-table" in xml
+        assert 'new CustomEvent(&quot;save_contact:done&quot;)' in xml
 
     def test_end_to_end_render_success_and_error_reveal(self):
         """Bout en bout, comme les tests de TestDslToEngineEndToEnd : le
@@ -1885,3 +1886,280 @@ class TestChannelEndToEnd:
         assert 'id="save_contact-1-onerror" hidden="hidden"' in html
         assert "Contact créé !" in html
         assert "Erreur" in html
+
+
+class TestEndpointReceiveValidation:
+    """`receive { schema: ...  list: true }` — la validation CLIENTE de la
+    réponse JSON est réellement câblée (pas juste « documentée » comme en
+    v1) : le descripteur est exporté dans window.XWEB_SCHEMAS (fermeture
+    transitive des `ref`/`list[ref]` composés), le hyperscript généré
+    appelle XwebValidate avec `{ list: ... }`, et un nom de schéma inconnu
+    est une CompileError (une validation morte qui laisserait tout passer
+    silencieusement serait pire que pas de validation du tout)."""
+
+    COMPOSED = """
+        data address { street: string @required  city: string @required }
+        data phone  { number: string @required }
+        data contact {
+            name: string @required
+            address: address
+            phones: list[phone]
+        }
+    """
+
+    def _render(self, source: str, template: str = "test") -> str:
+        xml = compile(textwrap.dedent(source))
+        reg = QwebRegistry()
+        reg.register_source(f"<templates>\n{xml}\n</templates>", filename="<test>")
+        return reg.render(template, {})
+
+    def test_receive_schema_unknown_raises_compile_error(self):
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="nop_response"):
+            compile("""
+                endpoint list_contacts { method: GET  url: "/x"
+                    receive { schema: nop_response } }
+                component test { div { use: list_contacts } }
+            """)
+
+    def test_receive_list_true_is_a_header_json_literal_in_xwebvalidate(self):
+        xml = compile(self.COMPOSED + """
+            endpoint list_contacts { method: GET  url: "/x"
+                receive { schema: contact  target: "#rows"  event: "contacts:load"  list: true } }
+            component test { button { use: list_contacts } }
+        """)
+        assert 'window.XwebValidate(&quot;contact&quot;' in xml
+        assert "{ list: true }" in xml
+
+    def test_receive_without_list_emits_list_false(self):
+        xml = _compile_one("""
+            data contact { name: string @required }
+            endpoint get_contact { method: GET  url: "/x"
+                receive { schema: contact }
+                onsuccess { p { "OK" } } }
+            component test { div { use: get_contact } }
+        """)
+        assert "{ list: false }" in xml
+
+    def test_no_receive_schema_means_no_schema_export_no_validation(self):
+        xml = _compile_one("""
+            endpoint save_contact { method: POST  url: "/x" }
+            form { use: save_contact }
+        """)
+        assert "XWEB_SCHEMAS" not in xml
+        assert "XwebValidate" not in xml
+
+    def test_composed_schema_export_includes_the_transitive_closure(self):
+        """`contact.address` est une `ref` vers `address`, `phones` un
+        `list[phone]` — la validation cliente descend dans ces sous-schémas
+        (XwebValidate résout par nom) : les TROIS descripteurs doivent être
+        exportés, pas seulement `contact` (trouvé en vrai jsdom : le succès
+        d'un tableau valide échouait avec « schéma address absent »)."""
+        xml = compile(self.COMPOSED + """
+            endpoint list_contacts { method: GET  url: "/x"
+                receive { schema: contact  list: true } }
+            component test { button { use: list_contacts } }
+        """)
+        assert 'window.XWEB_SCHEMAS["contact"]' in xml
+        assert 'window.XWEB_SCHEMAS["address"]' in xml
+        assert 'window.XWEB_SCHEMAS["phone"]' in xml
+
+    def test_channel_validate_export_includes_the_transitive_closure(self):
+        """Le MÊME trou (export racine seule) existait sur le bootstrap
+        d'un `channel { validate: }` composé — corrigé en même temps : la
+        fermeture transitive est partagée (_schema_closure)."""
+        xml = compile(self.COMPOSED + """
+            channel feed { url: "/stream"  validate: "contact" }
+            div { use_channel: feed }
+        """)
+        assert 'XWEB_SCHEMAS[&quot;contact&quot;]' in xml
+        assert 'XWEB_SCHEMAS[&quot;address&quot;]' in xml
+        assert 'XWEB_SCHEMAS[&quot;phone&quot;]' in xml
+
+    def test_end_to_end_render_schema_export_survives_unescaped(self):
+        """Le `<script>` d'export passe par le VRAI rendu QwebRegistry :
+        _RAW_TEXT_TAGS (engine/compiler.py) doit laisser le JS intact (pas
+        de &quot;/&amp; dans le HTML servi), comme pour le bootstrap d'un
+        channel."""
+        html = self._render(self.COMPOSED + """
+            endpoint list_contacts { method: GET  url: "/x"
+                receive { schema: contact  list: true } }
+            component test { button { use: list_contacts } }
+        """)
+        assert "<script>" in html
+        assert 'window.XWEB_SCHEMAS["contact"] = ' in html
+        assert 'window.XWEB_SCHEMAS["address"] = ' in html
+        assert "&quot;" not in html
+        assert "&amp;&amp;" not in html
+
+# =============================================================================
+# copy: / xpatch — copie-modification INLINE (docs/inheritance.md#xpatch)
+#
+# Compilation : `copy: "target"` + blocs `xpatch { expr: ...; position:
+# ...; ... }` → <t t-copy="target"><xpath ...> </xpath></t>. La SÉMANTIQUE
+# (snapshot de l'arbre résolu, source intacte) est prouvée par TestInline
+# CopyEndToEnd au niveau du vrai rendu — pas seulement par le texte.
+# =============================================================================
+
+
+class TestInlineCopy:
+    def test_inline_copy_emits_t_copy_and_xpath(self):
+        xml = compile(
+            """
+            component page {
+                head {
+                    copy: "xweb.shell_head"
+                    xpatch { expr: "//link[@rel='stylesheet']"; position: "after"
+                        link { rel: "stylesheet"; href: "/site.css" }
+                    }
+                }
+            }
+            """
+        )
+        assert_xml_contains(xml, '<head t-copy="xweb.shell_head">')
+        assert_xml_contains(
+            xml,
+            '<xpath expr="//link[@rel=&apos;stylesheet&apos;]" position="after">',
+        )
+        assert_xml_contains(xml, '<link rel="stylesheet" href="/site.css"/>')
+
+    def test_inline_copy_emits_position_inside_by_default(self):
+        xml = compile(
+            """
+            component page {
+                div {
+                    copy: "xweb.card"
+                    xpatch { expr: "//div"
+                        span { "★" }
+                    }
+                }
+            }
+            """
+        )
+        assert 'position="inside"' in xml
+
+    def test_inline_copy_attributes_position_emits_attribute_tags(self):
+        xml = compile(
+            """
+            component page {
+                head {
+                    copy: "xweb.shell_head"
+                    xpatch { expr: "//link[@rel='stylesheet']"; position: "attributes"
+                        link { data-tracked: "true" }
+                    }
+                }
+            }
+            """
+        )
+        assert '<attribute name="data-tracked">true</attribute>' in xml
+        assert "<a " not in xml
+
+    def test_inline_copy_target_must_be_a_literal_string(self):
+        """La cible de la copie est résolue par nom BRUT dans le registre —
+        une expression dynamique n'a pas de sens et doit être refusée à la
+        compilation (jamais silencieuse)."""
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="LITTÉRAL|litéral"):
+            compile("component page { div { copy: some_var } }")
+
+    def test_inline_copy_rejects_non_xpatch_children(self):
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="xpatch"):
+            compile(
+                'component page { head { copy: "xweb.shell_head"; span { "x" } } }'
+            )
+
+    def test_inline_copy_rejects_unknown_position(self):
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="inside\\|replace\\|before\\|after\\|attributes"):
+            compile(
+                'component page { head { copy: "xweb.shell_head"; '
+                'xpatch { expr: "//x"; position: "sideways"; span { "x" } } } }'
+            )
+
+    def test_inline_copy_requires_expr(self):
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="expr"):
+            compile(
+                'component page { head { copy: "xweb.shell_head"; '
+                'xpatch { position: "after"; span { "x" } } } }'
+            )
+
+    def test_inline_copy_void_element_is_rejected(self):
+        """Un élément void ne peut pas porter des blocs xpatch (aucun
+        corps) — refusé d'emblée plutôt que de laisser tomber
+        silencieusement les ops."""
+        from xdsl.compiler import CompileError
+
+        with pytest.raises(CompileError, match="void"):
+            compile(
+                'component page { link { copy: "xweb.shell_head"; '
+                'xpatch { expr: "//x"; position: "after"; span { "x" } } } }'
+            )
+
+    def test_inline_copy_wont_hijack_plain_expression_assignments(self):
+        """`copy` reste un mot-clé : seule la forme `copy:` (colon) devient
+        l'attribut de copie ; un usage non-attribut reste une erreur de
+        parse comme avant."""
+        from xdsl.parser import ParseError
+
+        with pytest.raises(ParseError):
+            compile("component page { copy }")
+
+
+class TestInlineCopyEndToEnd:
+    """La preuve qui compte : un vrai QwebRegistry rend la copie inline, la
+    source reste intacte, et les props passent comme pour t-call."""
+
+    def _register(self, source: str) -> QwebRegistry:
+        xml = compile(textwrap.dedent(source))
+        reg = QwebRegistry()
+        reg.register_source(f"<templates>\n{xml}\n</templates>", filename="<test>")
+        reg.check_all()
+        return reg
+
+    def test_inline_copy_modifies_only_the_copy(self):
+        reg = self._register(
+            """
+            component base.head {
+                meta { charset: "utf-8" }
+                link { rel: "stylesheet"; href: "/core.css" }
+            }
+            component page {
+                head {
+                    copy: "base.head"
+                    xpatch { expr: "//link[@rel='stylesheet']"; position: "after"
+                        link { rel: "stylesheet"; href: "/site.css" }
+                    }
+                }
+            }
+            """
+        )
+        page = reg.render("page", {})
+        assert 'href="/core.css"' in page and 'href="/site.css"' in page
+        # la source n'a pas reçu la customisation de la page
+        assert 'href="/site.css"' not in reg.render("base.head", {})
+
+    def test_inline_copy_receives_props_from_t_att(self):
+        reg = self._register(
+            """
+            component base.head {
+                props: { title: "" }
+                meta { charset: "utf-8" }
+                title { t-att: title }
+            }
+            component page {
+                div {
+                    copy: "base.head"
+                    t-att-title: "'Ma page'"
+                }
+            }
+            """
+        )
+        html = reg.render("page", {})
+        assert "Ma page" in html

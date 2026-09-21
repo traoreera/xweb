@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import textwrap
+
 import pytest
 
 from xdsl.parser import (
@@ -29,6 +31,7 @@ from xdsl.parser import (
     TextNode,
     TokenKind,
     XpathPatch,
+    split_value_type,
 )
 
 
@@ -1147,3 +1150,82 @@ class TestStyleDict:
         attr = elem.attributes[0]
         assert isinstance(attr.value, str)
         assert attr.value == "color: red"
+
+
+# =============================================================================
+# `data` — composition et listes typées
+# =============================================================================
+
+
+class TestDataCompositionAndListTypes:
+    """`address: address` (référence), `phones: list[phone]` (liste typée) —
+    le parsing porte ces deux formes sur DataField.value_type, avec
+    split_value_type() comme classification unique partagée par tous les
+    étages (parser, pydantic_bridge, compiler, validators.js)."""
+
+    COMPOSED = textwrap.dedent("""
+        data address { street: string @required  city: string @required }
+        data contact {
+            name: string @required
+            address: address
+            phones: list[phone]
+            tags: list[string]
+        }
+    """)
+
+    @pytest.fixture()
+    def schemas(self):
+        return {s.name: s for s in Parser(self.COMPOSED).parse().data_schemas}
+
+    def test_list_of_ref_keeps_the_bracket_type_string(self, schemas):
+        field = next(f for f in schemas["contact"].fields if f.name == "phones")
+        assert field.value_type == "list[phone]"
+
+    def test_list_of_primitive_keeps_the_bracket_type_string(self, schemas):
+        field = next(f for f in schemas["contact"].fields if f.name == "tags")
+        assert field.value_type == "list[string]"
+
+    def test_ref_field_is_the_bare_name(self, schemas):
+        field = next(f for f in schemas["contact"].fields if f.name == "address")
+        assert field.value_type == "address"
+
+    def test_split_value_type_classifies_primitives(self):
+        assert split_value_type("string") == ("primitive", "string")
+        assert split_value_type("int") == ("primitive", "int")
+        assert split_value_type("list") == ("primitive", "list")
+        assert split_value_type("dict") == ("primitive", "dict")
+
+    def test_split_value_type_classifies_ref(self):
+        assert split_value_type("address") == ("ref", "address")
+
+    def test_split_value_type_classifies_typed_lists(self):
+        assert split_value_type("list[phone]") == ("list", "phone")
+        assert split_value_type("list[string]") == ("list", "string")
+
+    def test_receive_list_true_is_parsed(self):
+        src = """
+            endpoint list_contacts { method: GET  url: "/api/contacts"
+                receive { type: json  schema: contact  list: true } }
+            component test { button { use: list_contacts } }
+        """
+        ep = Parser(src).parse().endpoints[0]
+        assert ep.receive.list is True
+        assert ep.receive.schema == "contact"
+
+    def test_receive_list_absent_defaults_to_false(self):
+        src = """
+            endpoint get_contact { method: GET  url: "/api/contacts/1"
+                receive { schema: contact } }
+            component test { div { use: get_contact } }
+        """
+        ep = Parser(src).parse().endpoints[0]
+        assert ep.receive.list is False
+
+    def test_receive_list_non_bool_is_a_parse_error(self):
+        src = """
+            endpoint get_contact { method: GET  url: "/x"
+                receive { schema: contact  list: "oui" } }
+            component test { div { use: get_contact } }
+        """
+        with pytest.raises(ParseError, match="list n'accepte que true/false"):
+            Parser(src).parse()

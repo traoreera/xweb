@@ -246,3 +246,145 @@ def test_channel_roundtrip():
     assert ch.onmessage.refresh == "#contacts-table"
     assert ch.onmessage.event == "contacts:changed"
     assert [tuple(b) for b in ch.onmessage.bindings] == [("#counter", "count")]
+
+
+def test_composed_data_and_receive_list_roundtrip():
+    """Régression ciblant les ajouts de la composition : `list[phone]`
+    (DataField.value_type devient `list[phone]`) et `receive { list: true }`
+    (ReceiveSpec.list) doivent SURVIVRE au .xdsl.json — recompilation
+    identique ET valeurs désérialisées correctes."""
+    src = textwrap.dedent("""
+        data address { street: string @required  city: string @required }
+        data phone  { number: string @required @pattern("[0-9]+") }
+        data contact {
+            name: string @required
+            address: address
+            phones: list[phone]
+            tags: list[string]
+        }
+
+        endpoint list_contacts {
+            method: GET
+            url: "/api/contacts"
+            receive { type: json  schema: contact  target: "#rows"  event: "contacts:loaded"  list: true }
+            onsuccess { p { "Contacts chargés" } }
+            onerror { p { "Erreur" } }
+        }
+
+        component test {
+            button { use: list_contacts }
+        }
+    """)
+    ast1 = Parser(src).parse()
+    xml_ref = Compiler(ast1).compile()
+
+    ast2 = ast_from_json(ast_to_json(ast1))
+    assert Compiler(ast2).compile() == xml_ref
+
+    fields = {f.name: f.value_type for f in ast2.data_schemas[2].fields}
+    assert fields["address"] == "address"
+    assert fields["phones"] == "list[phone]"
+    assert fields["tags"] == "list[string]"
+    ep = ast2.endpoints[0]
+    assert ep.receive.schema == "contact"
+    assert ep.receive.list is True
+
+
+def test_capsule_signature_roundtrip():
+    """La capsule générée par dsl_to_json contient une signature HMAC
+    et json_to_ast la vérifie — round-trip complet signature incluse."""
+    import os
+    from xdsl.api import dsl_to_json, json_to_ast
+    os.environ["XDSL_CAPSULE_SECRET"] = "test-secret"
+    os.environ["XDSL_CAPSULE_AUTHOR"] = "test-author"
+
+    src = textwrap.dedent("""
+        component test {
+            button { label: "OK" }
+        }
+    """)
+    capsule_json = dsl_to_json(src, filename="test.dsl")
+    import json
+    data = json.loads(capsule_json)
+    assert data["format"] == "xdsl.json"
+    assert data["version"] == 1
+    assert data["author"] == "test-author"
+    assert "signature" in data
+    assert isinstance(data["signature"], str) and len(data["signature"]) == 64  # SHA256 hex
+
+    # json_to_ast vérifie la signature et recompile
+    ast = json_to_ast(capsule_json)
+    xml = Compiler(ast).compile()
+    assert "OK" in xml
+
+
+def test_capsule_unsigned_rejected():
+    """Une capsule sans signature est refusée par json_to_ast."""
+    import os
+    import json
+    from xdsl.api import json_to_ast
+    os.environ["XDSL_CAPSULE_SECRET"] = "test-secret"
+    os.environ["XDSL_CAPSULE_AUTHOR"] = "test-author"
+
+    capsule_no_sig = json.dumps({
+        "format": "xdsl.json",
+        "version": 1,
+        "author": "test-author",
+        "filename": "test.dsl",
+        "ast": {"type": "Module", "components": [], "patches": [], "copies": []}
+    })
+
+    capsule_no_sig = json.dumps({
+        "format": "xdsl.json",
+        "version": 1,
+        "author": "test-author",
+        "filename": "test.dsl",
+        "ast": {"type": "Module", "components": [], "patches": [], "copies": []}
+    })
+
+    with pytest.raises(ValueError, match="non signée"):
+        json_to_ast(capsule_no_sig)
+
+
+def test_capsule_tampered_rejected():
+    """Une capsule altérée (signature invalide) est refusée."""
+    import os
+    import json
+    from xdsl.api import dsl_to_json, json_to_ast
+    os.environ["XDSL_CAPSULE_SECRET"] = "test-secret"
+    os.environ["XDSL_CAPSULE_AUTHOR"] = "test-author"
+
+    src = textwrap.dedent("""
+        component test {
+            button { label: "OK" }
+        }
+    """)
+    capsule_json = dsl_to_json(src, filename="test.dsl")
+    data = json.loads(capsule_json)
+    # Altérer l'AST (changer le label du button)
+    data["ast"]["components"][0]["children"][0]["attributes"][0]["value"] = "TAMPERED"
+    tampered = json.dumps(data)
+
+    with pytest.raises(ValueError, match="Signature HMAC.*invalide"):
+        json_to_ast(tampered)
+
+
+def test_capsule_wrong_secret_rejected():
+    """Une capsule signée avec une clé différente est refusée."""
+    import os
+    from xdsl.api import dsl_to_json, json_to_ast
+    os.environ["XDSL_CAPSULE_SECRET"] = "secret-A"
+    os.environ["XDSL_CAPSULE_AUTHOR"] = "test-author"
+
+    src = textwrap.dedent("""
+        component test {
+            button { label: "OK" }
+        }
+    """)
+    capsule_json = dsl_to_json(src, filename="test.dsl")
+
+    # Changer la clé pour la vérification
+    os.environ["XDSL_CAPSULE_SECRET"] = "secret-B"
+
+    with pytest.raises(ValueError, match="Signature HMAC.*invalide"):
+        json_to_ast(capsule_json)

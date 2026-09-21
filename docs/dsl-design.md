@@ -845,11 +845,17 @@ requête reste donc pilotée par **htmx**, comme le reste du projet
   réponse JSON — un `toast { "Contact créé !" }` fixe, jamais
   `toast { "Bonjour ${response.name}" }`).
 - Pour un vrai rendu dynamique du résultat (`receive.target`), l'endpoint
-  diffuse un événement (`send {event} to {target}`) au succès — c'est à
-  l'élément CIBLE de s'auto-rafraîchir depuis le serveur avec un vrai
+  diffuse, au succès, un **CustomEvent DOM** sur l'élément cible
+  (`document.querySelector(target).dispatchEvent(new CustomEvent(event))`,
+  `event` par défaut `{nom}:done`) — c'est à l'élément CIBLE de
+  s'auto-rafraîchir depuis le serveur avec un vrai
   `hx-trigger="{event} from:body"` (même idiome que `calendar:select` ->
   `xweb.datepicker`, ou xpulse). Le "rendu" reste donc un aller-retour
   serveur normal, jamais du JSON interprété en JS.
+
+La **validation de la réponse** (`receive.schema`) est aussi un aller-retour :
+c'est le HYPerscript généré qui vérifie la forme JSON arrivée, jamais un
+re-rendu. voir la section `endpoint` plus bas.
 
 ### Schéma `data` — validation, décorateurs
 
@@ -868,21 +874,78 @@ Chaque `@décorateur[(args)]` est une règle de `xdsl/validators.py::BUILTIN_VAL
 comme une autre, pas un cas spécial). `data` n'émet **aucun XML** : c'est un
 schéma réutilisable, consommé de deux façons —
 
-1. **Côté serveur**, via `xdsl.api.extract_schemas()` — la route Python du
-   plugin réutilise exactement les mêmes règles, jamais une redéfinition :
+1. **Côté serveur, chemin canonique — un vrai modèle Pydantic** via
+   `xdsl.api.extract_models()`. Depuis la décision « pas d'ORM → Pydantic
+   comme source de vérité » (tous les schémas servent à la fois la
+   validation et, plus tard, le rendu de champ façon `t-field` d'Odoo), le
+   bloc `data` compile vers un `BaseModel` construit par
+   `xdsl/pydantic_bridge.py::build_model()`, où chaque `@décorateur` est
+   attaché comme `AfterValidator` réutilisant la **même classe** Validator
+   que l'ancien chemin (jamais de contraintes Pydantic natives ré-implantées :
+   pydantic ancrerait `pattern` en full-match quand le moteur fait du
+   préfixe, `ge` refuserait les non-nombres quand `MinValue` passe au
+   travers). Le `value_type` devient une vraie annotation **appliquée**
+   (l'ancien `validate_dict` ne typait jamais), `@required` rend le champ
+   requis au modèle, `extra="ignore"` pour les champs inconnus du payload.
 
    ```python
-   from xdsl.api import extract_schemas
-   from xdsl.validators import validate_dict
+   from xdsl.api import extract_models, validate_model
 
-   schemas = extract_schemas(open("contacts.dsl").read())
-   errors = validate_dict(request_json, schemas["contact_form"])
+   models = extract_models(open("contacts.dsl").read())
+   errors = validate_model(models["contact_form"], request_json)
    # {} si valide, sinon {"name": ["Minimum 3 caractères"], ...}
+   # drop-in de validate_dict : mêmes règles, mêmes messages français
+   # (les messages de plusieurs règles d'un champ sont agrégés en une
+   # entrée). Ou construction objet typée, prête à persister :
+   contact = models["contact_form"].model_validate(request_json)
    ```
+
+   Une route HTML (via `xweb/forms.py::parse_form`) peut aussi recevoir
+   directement le modèle : `parse_form(form, models["contact_form"])` —
+   parse_form n'exige qu'un `BaseModel`, le pont fournit exactement ça.
+   Le chemin historique `xdsl.api.extract_schemas()` + `validate_dict()`
+   reste disponible (nécessaire aux vecteurs du miroir JS `validators.js`),
+   mais toute nouvelle validation doit passer par `extract_models`.
 
 2. Par `endpoint.send: contact_form` (documentation de la forme envoyée —
    ne génère pas encore d'attributs HTML5 natifs sur les `<input>`, voir
-   Limites plus bas).
+   Limites plus bas) et par `endpoint.receive.schema` (validation de la
+   RÉPONSE, voir la section `endpoint`). Un `channel { validate: contact_form }`
+   exporte aussi `window.XWEB_SCHEMAS_JSON[nom]` — le **JSON Schema** de
+   `model_json_schema()` du même modèle (aux côtés des listes de règles de
+   `XWEB_SCHEMAS`), réservé au futur rendu de champ et à tout consommateur
+   JSON Schema.
+
+**Composition et listes typées** : un champ peut être une RÉFÉRENCE à un
+autre `data` ou une liste typée —
+
+```qml
+data address {
+    street: string @required
+    city:   string @required
+}
+
+data contact {
+    name:    string @required
+    address: address            // objet imbriqué (référence)
+    phones:  list[phone]        // liste d'objets (réf + décorateurs)
+    tags:    list[string]       // liste de primitifs
+}
+```
+
+`list[item]` accepte un primitif (`string`, `int`…) ou une référence ;
+`xdsl/parser.py::split_value_type()` est la classification unique partagée
+par tous les étages (`("primitive", t)` / `("ref", nom)` / `("list", item)`).
+Côté serveur, `extract_models` construit la **map complète** de modèles
+imbriqués (`_ModelBuilder` récursif, `xdsl/pydantic_bridge.py`) et rejette
+les références circulaires au build (« Référence circulaire entre schémas »,
+jamais un RecursionError de validation). Les erreurs remontent au chemin
+doté serveur (`address.city`, `phones.0.number`) et au chemin crochets
+client (`phones[0].number`) — même descente, deux conventions d'index.
+Côté client, `validators.js` descend dans les mêmes `ref`/`list` (voir
+`endpoint` ci-dessous). Un type composé est un `ValueError` explicite sur le
+chemin plat legacy `extract_schemas`/`validate_dict` — le chemin canonique,
+composés inclus, est `extract_models`/`validate_model`/`validate_model_list`.
 
 ### `endpoint` — la requête elle-même
 
@@ -923,16 +986,13 @@ pour le détail exact) :
 
 ```xml
 <form hx-post="/api/contacts" hx-headers='{"Content-Type": "application/json"}'
-      hx-indicator="#save_contact-1-indicator"
+      hx-indicator="#save_contact-1-indicator" hx-swap="none"
       _="on htmx:afterRequest
-           if event.detail.successful
-             remove @hidden from #save_contact-1-onsuccess
-             add @hidden to #save_contact-1-onerror
-             send save_contact:done to #contact-table
-           else
-             remove @hidden from #save_contact-1-onerror
-             add @hidden to #save_contact-1-onsuccess
-           end">
+         js(event)
+           let ok = event.detail.successful;
+           document.querySelector('#save_contact-1-onsuccess').hidden = !ok;
+           if (ok) { var t = document.querySelector('#contact-table'); if (t) t.dispatchEvent(new CustomEvent('save_contact:done')); }
+         end">
     <t t-call="xweb.csrf" t-att-token="csrf_token"/>
     <input name="name" required="required"/>
     <button type="submit">Envoyer</button>
@@ -959,7 +1019,59 @@ pour le détail exact) :
   un composant tiers qui veut supporter `use:` doit faire pareil.
 - Un `use: nom_inconnu` lève une `xdsl.compiler.CompileError` à la
   compilation — jamais un élément inerte silencieux (même posture que le
-  raccourci `<xweb:...>`, `docs/language.md`).
+  raccourci `<xweb:...>`, `docs/language.md`). Idem pour `receive.schema:
+  nom_inconnu` (une validation morte qui laisserait tout passer serait pire
+  que pas de validation du tout).
+
+### Validation de la réponse (`receive { schema, list }`)
+
+Contrairement à v1 (où `receive.schema` ne documentait que la forme
+attendue), le schema est maintenant **câblé** : le hyperscript généré valide
+la réponse JSON au succès HTTP —
+
+```qml
+endpoint list_contacts {
+    method: GET
+    url: "/api/contacts"
+    receive {
+        type: json
+        schema: contact
+        target: "#rows"          // re-rendu via hx-trigger depuis le serveur
+        event: "contacts:loaded"
+        list: true               // la réponse est un TABLEAU d'objets
+    }
+    onsuccess { p { "Contacts chargés" } }
+    onerror { p { "Erreur de chargement" } }
+}
+```
+
+Au succès HTTP, le hyperscript appelle
+`window.XwebValidate("contact", JSON.parse(responseText), { list: true })`
+(exporté par `xweb/static/validators.js`, le miroir JS du moteur Python) —
+une réponse **invalide** passe par le chemin **onerror** (jamais onsuccess ni
+l'event de refresh) ; un corps non-JSON est invalide, jamais une exception.
+C'est de l'**UX** (afficher l'erreur au client, préserver un tableau
+semi-à-jour) : la source de vérité reste le serveur
+(`xdsl.api.validate_response(models, "contact", payload, as_list=True)`).
+Le scaffolding exporte le descripteur dans `window.XWEB_SCHEMAS` + la
+**fermeture transitive** des `ref`/`list[ref]` composés (`_schema_closure`,
+partagée avec le bootstrap d'un `channel { validate: }` composé).
+`receive.list: true` ✔ sa validation passe par `validate_model_list`
+(`{"__root__": ["Doit être une liste valide."]}` si ce n'est pas un tableau)
+et, côté JS, par `XwebValidate(..., { list: true })` (`__root__` idem).
+
+**Piège lxml → forme `js(event)` imposée** : le script est écrit multi-ligne
+pour la lisibilité du XML compilé, mais lxml normalise les `\n` d'attributs
+en **espaces** au round-trip `QwebRegistry` — le hyperscript reçoit
+TOUJOURS la forme aplatie, et la structure `if/else/end` d'hyperscript ne
+survit pas à cet aplatissement (`Unexpected Token : else`, vérifié au vrai
+`_hyperscript.min.js`). Tout le routing de `_endpoint_hyperscript` est donc
+**un seul bloc `js(...) end`** (JS verbatim, `;`-séparé) : try/catch du
+`JSON.parse`, `XwebValidate`, bascule `hidden`, dispatch conditionnel —
+jamais un if hyperscript. `npm run verify:endpoint-dsl` prouve cette forme
+RÉELLE (aplatie par un vrai rendu QwebRegistry) contre le vrai
+htmx/_hyperscript/validators.js en jsdom. Un endpoint sans onsuccess/onerror/
+`receive.target` n'émet aucun `_` (rien à révéler ni diffuser).
 
 ### Limites connues (v1)
 
@@ -967,9 +1079,16 @@ pour le détail exact) :
   sur les `<input>` d'un formulaire — `required`/`type="email"`/etc.
   restent à écrire à la main sur chaque champ (comme dans l'exemple
   ci-dessus). `data` sert aujourd'hui la validation **serveur**
-  (`extract_schemas`), pas encore le HTML généré.
-- **`receive.schema`** documente la forme JSON attendue mais ne pilote
-  encore rien — ni validation, ni génération de code.
+  (`extract_schemas`/`extract_models`) et **client de la réponse**
+  (`receive { schema }`), pas encore le HTML généré — le modèle Pydantic est
+  en place et `model_json_schema()` est déjà exporté
+  (`window.XWEB_SCHEMAS_JSON`) : l'étage rendu de champ façon `t-field`
+  partira de là.
+- La validation client de la réponse (`receive { schema }`) est de l'**UX**
+  uniquement — le serveur reste la source de vérité (`validate_response`).
+  Un client malveillant peut toujours envoyer/ignorer n'importe quoi ;
+  une route qui applique ONLY le hyperscript généré (sans route Python de
+  validation) ne valide rien.
 - **Un seul argument par filtre/décorateur en interpolation nue** — même
   limite que le chaînage de filtres QWeb (voir section Filtres) : sans
   rapport direct avec `data`, mais la même prudence s'applique aux
